@@ -40,6 +40,12 @@ export const players = pgTable("players", {
   gender: text("gender", { enum: ["M", "F"] }).notNull(),
   rating: text("rating", { enum: ["beginner", "mid", "advanced"] }).notNull(),
   active: boolean("active").notNull().default(true),
+  /**
+   * Out: done for the night (injury, early leave) but still on the roster
+   * and the leaderboard. No new games are generated for them; their queued
+   * games are flagged for the organizer to clear and top up.
+   */
+  out: boolean("out").notNull().default(false),
 });
 
 export const games = pgTable("games", {

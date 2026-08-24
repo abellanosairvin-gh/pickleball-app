@@ -14,6 +14,7 @@ import { ScoreEditPopup } from "@/components/ScoreEditPopup";
 import { ScoreForm } from "@/components/ScoreForm";
 import { WaitBadge } from "@/components/WaitBadge";
 import {
+  clearOutGames,
   deleteGame,
   deleteSession,
   endSession,
@@ -22,9 +23,11 @@ import {
   moveGame,
   removePlayer,
   simulateScores,
+  setPlayerOut,
   startGame,
   startTournament,
   submitScore,
+  topUpSchedule,
 } from "@/lib/actions";
 import { ChampionshipLadder } from "@/components/ChampionshipLadder";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
@@ -93,6 +96,13 @@ export default async function SessionPage({
 
   const byId = new Map(allPlayers.map((p) => [p.id, p]));
   const roster = allPlayers.filter((p) => p.active);
+  // Out players (done for the night) stay on the roster but get no games.
+  const available = roster.filter((p) => !p.out);
+  const outIds = new Set(roster.filter((p) => p.out).map((p) => p.id));
+  const outNames = (g: Game) =>
+    [g.t1p1, g.t1p2, g.t2p1, g.t2p2]
+      .filter((id) => outIds.has(id))
+      .map((id) => byId.get(id)?.name ?? "?");
   const snapshot = buildSnapshot(session, allPlayers, allGames);
   const isTournament = session.tournament;
   // gameId → names whose result didn't count toward the leaderboard (over
@@ -115,6 +125,9 @@ export default async function SessionPage({
   const queue = allGames
     .filter((g) => g.status === "queued")
     .sort((a, b) => a.queueOrder - b.queueOrder || a.seq - b.seq);
+  // Queued games that include an Out player: red in the queue, cleared in
+  // one go, then topped up.
+  const outQueued = queue.filter((g) => outNames(g).length > 0);
   const completed = allGames
     .filter((g) => g.status === "completed")
     .sort(
@@ -147,7 +160,7 @@ export default async function SessionPage({
   // the hard rules (gender, rating, partner uniqueness) always apply.
   const busiest = Math.max(
     0,
-    ...roster.map(
+    ...available.map(
       (p) =>
         allGames.filter((g) =>
           [g.t1p1, g.t1p2, g.t2p1, g.t2p2].includes(p.id),
@@ -155,9 +168,9 @@ export default async function SessionPage({
     ),
   );
   const suggestions =
-    session.status === "active" && roster.length >= 4
+    session.status === "active" && available.length >= 4
       ? computeSuggestions({
-          players: roster.map((p) => ({
+          players: available.map((p) => ({
             id: p.id,
             rating: p.rating,
             gender: p.gender,
@@ -288,7 +301,8 @@ export default async function SessionPage({
           {shortfall
             .map((s) => `${s.name} gets ${s.scheduled} of ${session.gameCap}`)
             .join(", ")}
-          . Hand-fix via the queue editor or create fixed games.
+          . Top up to add just their games, hand-fix via the queue editor, or
+          create fixed games.
         </div>
       )}
 
@@ -359,6 +373,11 @@ export default async function SessionPage({
                       )}
                     </span>
                   </div>
+                  {outNames(g).length > 0 && (
+                    <p className="mt-2 rounded-md border border-[#e0a0a0] bg-[#fbe9e7] px-2.5 py-1.5 text-xs font-semibold text-[#9b2c2c]">
+                      Out: {outNames(g).join(", ")} - score it or delete it
+                    </p>
+                  )}
                   <div className="mt-2.5 flex items-center gap-3">
                     <div className="flex-1 font-display text-xl leading-snug">
                       {byId.get(g.t1p1)?.name ?? "?"}
@@ -465,6 +484,20 @@ export default async function SessionPage({
                   : "Generate"}
             </ConfirmSubmit>
           </form>
+          {session.defaultMode !== "ladder" &&
+            queue.length + playing.length + completed.length > 0 && (
+              <form action={topUpSchedule}>
+                <input type="hidden" name="sessionId" value={session.id} />
+                <ConfirmSubmit
+                  title="Top up the queue?"
+                  message="Keeps every queued game and adds only the games players still need to reach the cap - typically the ones cleared after a player went Out. New games go to the end of the queue."
+                  confirmLabel="Top up"
+                  className="rounded-md border-2 border-ink bg-card px-4 py-2 text-sm font-semibold text-ink hover:bg-paper"
+                >
+                  Top up
+                </ConfirmSubmit>
+              </form>
+            )}
           {isTournament && tstatus?.phase !== "champions" && (
             <form action={startTournament}>
               <input type="hidden" name="sessionId" value={session.id} />
@@ -484,10 +517,10 @@ export default async function SessionPage({
               </ConfirmSubmit>
             </form>
           )}
-          {roster.length >= 4 && (
+          {available.length >= 4 && (
             <FixedGamePopup
               sessionId={session.id}
-              options={playerOptions(roster)}
+              options={playerOptions(available)}
               suggestions={suggestions}
               enforceGender={session.defaultMode !== "ladder"}
             />
@@ -507,6 +540,28 @@ export default async function SessionPage({
         <SectionTitle>
           Queue <span className="text-sm text-muted">({queue.length})</span>
         </SectionTitle>
+        {!ended && outQueued.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-[#e0a0a0] bg-[#fbe9e7] p-3 text-sm text-[#9b2c2c]">
+            <span>
+              <strong className="font-semibold">
+                {outQueued.length} game{outQueued.length === 1 ? "" : "s"}
+              </strong>{" "}
+              include a player who is out.
+            </span>
+            <form action={clearOutGames}>
+              <input type="hidden" name="sessionId" value={session.id} />
+              <ConfirmSubmit
+                title={`Clear ${outQueued.length} game${outQueued.length === 1 ? "" : "s"}?`}
+                message="Every queued game with an Out player is deleted. Then Top up to give the other players in those games their replacements."
+                confirmLabel="Clear"
+                danger
+                className="rounded-md bg-[#9b2c2c] px-3 py-1.5 text-xs font-semibold text-card hover:bg-[#7f1d1d]"
+              >
+                Clear out games
+              </ConfirmSubmit>
+            </form>
+          </div>
+        )}
         {queue.length === 0 ? (
           <p className="rounded-md border border-dashed border-dash p-4 text-sm text-faint">
             No games queued.
@@ -516,18 +571,26 @@ export default async function SessionPage({
             {queue.map((g, idx) => {
               const ready = readyGames.has(g.id);
               const blockers = blockedGames.get(g.id);
+              const outHere = outNames(g);
               return (
               <li
                 key={g.id}
                 className={`rounded-md border p-3 shadow-[0_1px_0_#d9d2c2] ${
-                  ready
-                    ? "border-ink bg-[#eef2e4]"
-                    : blockers
-                      ? "border-[#d89a7c] bg-[#f9e9df]"
-                      : "border-line bg-card"
+                  outHere.length > 0
+                    ? "border-[#c94f4f] bg-[#fbe9e7]"
+                    : ready
+                      ? "border-ink bg-[#eef2e4]"
+                      : blockers
+                        ? "border-[#d89a7c] bg-[#f9e9df]"
+                        : "border-line bg-card"
                 }`}
               >
-                {ready && (
+                {outHere.length > 0 && (
+                  <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-[#9b2c2c]">
+                    Out: {outHere.join(", ")}
+                  </p>
+                )}
+                {ready && outHere.length === 0 && (
                   <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-ink">
                     Ready - court open
                   </p>
@@ -599,7 +662,7 @@ export default async function SessionPage({
                         sessionId={session.id}
                         gameId={g.id}
                         seq={g.seq}
-                        options={playerOptions(roster)}
+                        options={playerOptions(available)}
                         defaults={[g.t1p1, g.t1p2, g.t2p1, g.t2p2]}
                         enforceGender={session.defaultMode !== "ladder"}
                       />
@@ -646,7 +709,11 @@ export default async function SessionPage({
           roster: (
       <section className="mb-6">
         <SectionTitle>
-          Roster <span className="text-sm text-muted">({roster.length})</span>
+          Roster{" "}
+          <span className="text-sm text-muted">
+            ({available.length}
+            {outIds.size > 0 ? ` playing · ${outIds.size} out` : ""})
+          </span>
           {isTournament && (
             <span className="ml-2 align-middle text-xs font-sans text-muted">
               M {roster.filter((p) => p.gender === "M").length} · F{" "}
@@ -661,23 +728,51 @@ export default async function SessionPage({
             {roster.map((p) => (
               <li key={p.id} className="p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium">
+                  <span
+                    className={`text-sm font-medium ${p.out ? "text-muted line-through decoration-[#c94f4f]" : ""}`}
+                  >
                     {p.name}{" "}
                     <span className="text-xs text-faint">
                       {GENDER_LABEL[p.gender]} ({RATING_ABBR[p.rating]})
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
-                    <WaitBadge
-                      lastPlayedAt={
-                        lastPlayed.has(p.id)
-                          ? new Date(lastPlayed.get(p.id)!).toISOString()
-                          : null
-                      }
-                      onCourt={onCourt.has(p.id)}
-                    />
+                    {p.out ? (
+                      <span className="rounded-full border border-[#c94f4f] bg-[#fbe9e7] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9b2c2c]">
+                        Out
+                      </span>
+                    ) : (
+                      <WaitBadge
+                        lastPlayedAt={
+                          lastPlayed.has(p.id)
+                            ? new Date(lastPlayed.get(p.id)!).toISOString()
+                            : null
+                        }
+                        onCourt={onCourt.has(p.id)}
+                      />
+                    )}
                     {!ended && (
                       <>
+                        <form action={setPlayerOut}>
+                          <input type="hidden" name="sessionId" value={session.id} />
+                          <input type="hidden" name="playerId" value={p.id} />
+                          <input type="hidden" name="out" value={p.out ? "0" : "1"} />
+                          {p.out ? (
+                            <button className="rounded-md border border-line px-2 py-1.5 text-xs font-medium text-muted hover:bg-paper">
+                              Back in
+                            </button>
+                          ) : (
+                            <ConfirmSubmit
+                              title={`${p.name} is out?`}
+                              message="Done for the night: no new games are generated for them and their played results stay on the leaderboard. Their queued games turn red so you can clear them and top up."
+                              confirmLabel="Mark out"
+                              danger
+                              className="rounded-md border border-[#e0a0a0] px-2 py-1.5 text-xs font-medium text-[#9b2c2c] hover:bg-[#fbe9e7]"
+                            >
+                              Out
+                            </ConfirmSubmit>
+                          )}
+                        </form>
                         <PlayerEditPopup
                           sessionId={session.id}
                           player={{
@@ -858,7 +953,7 @@ export default async function SessionPage({
                 <div className="mt-2.5 flex items-center gap-3">
                   <div
                     className={`flex-1 font-display text-lg leading-snug ${
-                      t1Won ? "text-ink" : "text-muted"
+                      t1Won ? "text-win" : "text-loss"
                     }`}
                   >
                     {byId.get(g.t1p1)?.name ?? "?"}
@@ -870,7 +965,7 @@ export default async function SessionPage({
                   </div>
                   <div
                     className={`flex-1 text-right font-display text-lg leading-snug ${
-                      t1Won ? "text-muted" : "text-ink"
+                      t1Won ? "text-loss" : "text-win"
                     }`}
                   >
                     {byId.get(g.t2p1)?.name ?? "?"}

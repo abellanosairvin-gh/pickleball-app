@@ -16,13 +16,22 @@ function Team({
   names,
   winner,
   sep = " & ",
+  className,
 }: {
   names: [string, string];
+  /** Decided result: winners green, losers red. Undefined = neutral (queue). */
   winner?: boolean;
   sep?: string;
+  className?: string;
 }) {
+  const tone =
+    winner === undefined
+      ? ""
+      : winner
+        ? "font-semibold text-win"
+        : "text-loss";
   return (
-    <span className={winner ? "font-semibold" : ""}>
+    <span className={`${tone} ${className ?? ""}`.trim()}>
       {names[0]}
       {sep}
       {names[1]}
@@ -290,11 +299,11 @@ export function SpectatorApp({ token }: { token: string }) {
                 className="rounded-md border border-line bg-card p-3 text-sm shadow-[0_1px_0_#d9d2c2]"
               >
                 <div className="flex items-center justify-between">
-                  <span>
+                  <span className="flex items-center">
                     <GameNo seq={g.seq} />
                     {g.label && (
                       <span
-                        className={`mr-2 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+                        className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
                           g.stage === null
                             ? "border-line bg-paper text-muted"
                             : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
@@ -303,21 +312,27 @@ export function SpectatorApp({ token }: { token: string }) {
                         {g.label}
                       </span>
                     )}
-                    <Team
-                      names={g.team1.names}
-                      winner={(g.score1 ?? 0) > (g.score2 ?? 0)}
-                    />{" "}
-                    <span className="font-display">
-                      {g.score1}–{g.score2}
-                    </span>{" "}
-                    <Team
-                      names={g.team2.names}
-                      winner={(g.score2 ?? 0) > (g.score1 ?? 0)}
-                    />
                   </span>
                   <span className="ml-2 shrink-0 text-xs text-faint tabular-nums">
                     {g.durationMs !== null ? formatDuration(g.durationMs) : ""}
                   </span>
+                </div>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <Team
+                    names={g.team1.names}
+                    sep=" / "
+                    winner={(g.score1 ?? 0) > (g.score2 ?? 0)}
+                    className="flex-1"
+                  />
+                  <span className="shrink-0 font-display text-base tabular-nums">
+                    {g.score1}–{g.score2}
+                  </span>
+                  <Team
+                    names={g.team2.names}
+                    sep=" / "
+                    winner={(g.score2 ?? 0) > (g.score1 ?? 0)}
+                    className="flex-1 text-right"
+                  />
                 </div>
                 {g.uncounted.length > 0 && (
                   <p className="mt-1.5 border-t border-rule pt-1.5 text-xs text-muted">

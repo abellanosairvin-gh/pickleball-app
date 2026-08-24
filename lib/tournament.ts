@@ -151,6 +151,9 @@ function qualifiedPlayers(
   // the cap don't influence who qualifies.
   const standings = computeLeaderboard(roster, allGames, session.gameCap);
   const rank = new Map(standings.map((r, i) => [r.playerId, i]));
+  // Out players (done for the night) skip the playoffs; the next in line
+  // takes their slot.
+  roster = roster.filter((p) => !p.out);
   const byRank = (a: Player, b: Player) =>
     (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
     (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER);
@@ -274,22 +277,8 @@ export async function runTournamentRound(
   let seq = Math.max(0, ...allGames.map((g) => g.seq));
   let queueOrder = Math.max(0, ...allGames.map((g) => g.queueOrder));
   const newGames: (typeof games.$inferInsert)[] = [];
-  for (let i = 0; i + 1 < matchTeams.length; i += 2) {
-    const [t1, t2] = [matchTeams[i], matchTeams[i + 1]];
-    newGames.push({
-      sessionId,
-      seq: ++seq,
-      queueOrder: ++queueOrder,
-      round,
-      stage: isFinal ? "final" : null,
-      t1p1: t1[0].id,
-      t1p2: t1[1].id,
-      t2p1: t2[0].id,
-      t2p2: t2[1].id,
-    });
-  }
-
-  // Alongside the final, the semifinal losers play a battle for 3rd.
+  // Alongside the final, the semifinal losers play a battle for 3rd. It is
+  // queued ahead of the final so the championship closes the night.
   if (isFinal) {
     const semis = bracket.filter(
       (g) => g.round === lastRound && g.stage !== "bronze",
@@ -324,6 +313,21 @@ export async function runTournamentRound(
       }
     }
   }
+  for (let i = 0; i + 1 < matchTeams.length; i += 2) {
+    const [t1, t2] = [matchTeams[i], matchTeams[i + 1]];
+    newGames.push({
+      sessionId,
+      seq: ++seq,
+      queueOrder: ++queueOrder,
+      round,
+      stage: isFinal ? "final" : null,
+      t1p1: t1[0].id,
+      t1p2: t1[1].id,
+      t2p1: t2[0].id,
+      t2p2: t2[1].id,
+    });
+  }
+
   if (newGames.length > 0) await db.insert(games).values(newGames);
 }
 

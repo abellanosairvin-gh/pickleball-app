@@ -24,7 +24,13 @@ export async function runLadderMatchmaking(sessionId: number) {
   const roster = await db
     .select()
     .from(players)
-    .where(and(eq(players.sessionId, sessionId), eq(players.active, true)));
+    .where(
+      and(
+        eq(players.sessionId, sessionId),
+        eq(players.active, true),
+        eq(players.out, false),
+      ),
+    );
   const allGames = await db
     .select()
     .from(games)

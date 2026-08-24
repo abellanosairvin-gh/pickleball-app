@@ -24,9 +24,9 @@ export const GENDER_LABEL: Record<string, string> = {
 };
 
 export const RATING_ABBR: Record<string, string> = {
-  beginner: "BEG",
-  mid: "MID",
-  advanced: "ADV",
+  beginner: "B",
+  mid: "M",
+  advanced: "A",
 };
 
 /** "45s", "23m 14s", "1h 02m 05s" - durations always show seconds. */

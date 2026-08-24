@@ -148,6 +148,57 @@ export async function updatePlayer(formData: FormData) {
 }
 
 /**
+ * Marks a player Out (done for the night) or back in. Out players stay on
+ * the roster and leaderboard but get no new games; their queued games turn
+ * red in the queue for the organizer to clear (clearOutGames) and top up
+ * (topUpSchedule).
+ */
+export async function setPlayerOut(formData: FormData) {
+  await requireAuth();
+  const id = Number(formData.get("playerId"));
+  const sessionId = Number(formData.get("sessionId"));
+  const out = formData.get("out") === "1";
+  await db
+    .update(players)
+    .set({ out })
+    .where(and(eq(players.id, id), eq(players.sessionId, sessionId)));
+  revalidate(sessionId);
+}
+
+/** Which players are out for the night; their games are what we clear/flag. */
+async function outPlayerIds(sessionId: number): Promise<number[]> {
+  const rows = await db
+    .select({ id: players.id })
+    .from(players)
+    .where(and(eq(players.sessionId, sessionId), eq(players.out, true)));
+  return rows.map((r) => r.id);
+}
+
+/** Deletes every queued game (pinned or not) that includes an Out player. */
+export async function clearOutGames(formData: FormData) {
+  await requireAuth();
+  const sessionId = Number(formData.get("sessionId"));
+  const ids = await outPlayerIds(sessionId);
+  if (ids.length > 0) {
+    await db
+      .delete(games)
+      .where(
+        and(
+          eq(games.sessionId, sessionId),
+          eq(games.status, "queued"),
+          or(
+            inArray(games.t1p1, ids),
+            inArray(games.t1p2, ids),
+            inArray(games.t2p1, ids),
+            inArray(games.t2p2, ids),
+          ),
+        ),
+      );
+  }
+  revalidate(sessionId);
+}
+
+/**
  * Removes a player from the roster (stats on completed games survive) and
  * deletes their un-started games - the organizer then regenerates the tail.
  */
@@ -185,16 +236,42 @@ export async function removePlayer(formData: FormData) {
 export async function generateSchedule(formData: FormData) {
   await requireAuth();
   const sessionId = Number(formData.get("sessionId"));
+  await regenerate(sessionId, { keepQueue: false });
+}
+
+/**
+ * Top-up per ADR-0002: keeps every existing game (the whole queue included)
+ * and generates only the games needed to bring under-cap players back to
+ * the cap - the ones whose games were cleared after a player went Out, and
+ * the partners/opponents orphaned with them. Nobody else's games move.
+ */
+export async function topUpSchedule(formData: FormData) {
+  await requireAuth();
+  const sessionId = Number(formData.get("sessionId"));
+  await regenerate(sessionId, { keepQueue: true });
+}
+
+async function regenerate(
+  sessionId: number,
+  opts: { keepQueue: boolean },
+) {
   const [session] = await db
     .select()
     .from(sessions)
     .where(eq(sessions.id, sessionId));
   if (!session || session.status !== "active") return;
 
+  // Out players get no new games (their played games still count for them).
   const roster = await db
     .select()
     .from(players)
-    .where(and(eq(players.sessionId, sessionId), eq(players.active, true)));
+    .where(
+      and(
+        eq(players.sessionId, sessionId),
+        eq(players.active, true),
+        eq(players.out, false),
+      ),
+    );
   const allGames = await db
     .select()
     .from(games)
@@ -241,9 +318,9 @@ export async function generateSchedule(formData: FormData) {
     return;
   }
 
-  const removable = allGames.filter(
-    (g) => g.status === "queued" && !g.pinned,
-  );
+  const removable = opts.keepQueue
+    ? []
+    : allGames.filter((g) => g.status === "queued" && !g.pinned);
   if (removable.length > 0) {
     await db.delete(games).where(
       inArray(
@@ -252,7 +329,9 @@ export async function generateSchedule(formData: FormData) {
       ),
     );
   }
-  const kept = allGames.filter((g) => g.status !== "queued" || g.pinned);
+  const kept = opts.keepQueue
+    ? allGames
+    : allGames.filter((g) => g.status !== "queued" || g.pinned);
 
   const result = runGenerator({
     players: roster.map((p) => ({ id: p.id, rating: p.rating, gender: p.gender })),
@@ -264,7 +343,9 @@ export async function generateSchedule(formData: FormData) {
     })),
   });
 
-  let seq = Math.max(0, ...allGames.map((g) => g.seq));
+  // Number on from the games that survive the regenerate, not the ones just
+  // deleted - otherwise a fresh event's first regenerate starts at No. 38.
+  let seq = Math.max(0, ...kept.map((g) => g.seq));
   let queueOrder = Math.max(0, ...kept.map((g) => g.queueOrder));
   if (result.games.length > 0) {
     await db.insert(games).values(

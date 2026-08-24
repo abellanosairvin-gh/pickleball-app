@@ -13,6 +13,8 @@
   --color-dash: #c9c0aa; /* dashed empty states */
   --color-clay: #b95c38; /* terracotta accent */
   --color-clay-deep: #96452a;
+  --color-win: #2e7d3e; /* winners in results */
+  --color-loss: #b3312b; /* losers in results */
 
   --font-display: var(--font-dm-serif), Georgia, serif;
   --font-body: var(--font-public-sans), system-ui, sans-serif;

@@ -260,6 +260,8 @@ export function computeShortfall(
     }
   }
   return allPlayers
-    .filter((p) => p.active && (counts.get(p.id) ?? 0) < session.gameCap)
+    .filter(
+      (p) => p.active && !p.out && (counts.get(p.id) ?? 0) < session.gameCap,
+    )
     .map((p) => ({ name: p.name, scheduled: counts.get(p.id) ?? 0 }));
 }

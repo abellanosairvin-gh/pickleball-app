@@ -16,6 +16,10 @@ _Avoid_: Admin, host
 A named participant in a Session, entered by the Organizer, with a Rating and a gender. Exists only within a Session (no cross-session identity).
 _Avoid_: User, member
 
+**Out**:
+A Player tag meaning "done for the night" (injury, early leave) without leaving the roster: no new Games are generated for them, they skip the tournament playoffs, but their played results stay on the Leaderboard. Reversible. Their queued Games are flagged for the Organizer to clear, then top up.
+_Avoid_: Injured, inactive, removed
+
 **Rating**:
 A Player's self-declared skill tier: Beginner, Mid, or Advanced. Beginner and Advanced may never appear in the same Game in any role; Mid may play with anyone.
 _Avoid_: Level, skill, rank
