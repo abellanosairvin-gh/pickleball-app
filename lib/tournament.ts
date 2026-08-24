@@ -327,6 +327,39 @@ export async function runTournamentRound(
   if (newGames.length > 0) await db.insert(games).values(newGames);
 }
 
+/**
+ * Bracket-game display label. Medal games are "Championship" and "Battle for
+ * 3rd"; every other bracket game is named by what its round is playing for -
+ * the round's survivors (two per game): "Men battle for top 4" when eight men
+ * play a same-gender qualifier round, "Battle for top 4" for a mixed round.
+ * Null for regular (non-bracket) games.
+ */
+export function bracketLabel(
+  g: Game,
+  allGames: Game[],
+  byId: Map<number, Player>,
+): string | null {
+  if (g.round === null) return null;
+  if (g.stage === "final") return "Championship";
+  if (g.stage === "bronze") return "Battle for 3rd";
+  const roundGames = allGames.filter(
+    (x) => x.round === g.round && x.stage !== "bronze",
+  );
+  const genders = new Set(
+    roundGames
+      .flatMap((x) => [x.t1p1, x.t1p2, x.t2p1, x.t2p2])
+      .map((id) => byId.get(id)?.gender)
+      .filter(Boolean),
+  );
+  const who =
+    genders.size === 1
+      ? genders.has("M")
+        ? "Men battle"
+        : "Women battle"
+      : "Battle";
+  return `${who} for top ${roundGames.length * 2}`;
+}
+
 export type TournamentStatus = {
   phase: "not-started" | "qualifier" | "finals" | "champions";
   round: number;

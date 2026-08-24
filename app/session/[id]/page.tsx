@@ -30,7 +30,6 @@ import { ChampionshipLadder } from "@/components/ChampionshipLadder";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
 import { requireAuth } from "@/lib/auth";
 import {
-  bracketLabel,
   courtName,
   formatDuration,
   GENDER_LABEL,
@@ -44,7 +43,7 @@ import {
   loadSessionData,
 } from "@/lib/queries";
 import { generateSchedule as computeSuggestions } from "@/lib/scheduler";
-import { tournamentStatus } from "@/lib/tournament";
+import { bracketLabel, tournamentStatus } from "@/lib/tournament";
 import type { Game, Player } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
@@ -97,11 +96,11 @@ export default async function SessionPage({
   const snapshot = buildSnapshot(session, allPlayers, allGames);
   const isTournament = session.tournament;
   // gameId → names whose result didn't count toward the leaderboard (over
-  // cap). Applies to regular games in every session type; bracket games
-  // always count.
+  // cap). Bracket games never count toward the leaderboard at all.
   const uncounted = new Map<number, string[]>();
   computeLeaderboard(allPlayers, allGames, session.gameCap, uncounted);
   const tstatus = isTournament ? tournamentStatus(roster, allGames) : null;
+  const label = (g: Game) => bracketLabel(g, allGames, byId);
   // Regular games go to 11; tournament bracket games go to 15.
   const target = (g: Game) => (g.round !== null ? 15 : 11);
   const bracketStarted = allGames.some((g) => g.round !== null);
@@ -121,6 +120,15 @@ export default async function SessionPage({
     .sort(
       (a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0),
     );
+  // Finished bracket games get their own section above the regular games.
+  const completedSections = [
+    {
+      title: "Tournament",
+      note: "Bracket results stay off the leaderboard.",
+      games: completed.filter((g) => g.round !== null),
+    },
+    { title: "Completed", note: null, games: completed.filter((g) => g.round === null) },
+  ].filter((s) => s.title === "Completed" || s.games.length > 0);
   const lastPlayed = new Map<number, number>();
   const onCourt = new Set<number>();
   for (const g of allGames) {
@@ -335,7 +343,7 @@ export default async function SessionPage({
                       {courtName(court)}
                       {g.round !== null && (
                         <span className="ml-2 rounded-full border border-[#d89a7c] bg-[#f9e9df] px-2 py-0.5 tracking-[0.12em]">
-                          {bracketLabel(g)}
+                          {label(g)}
                         </span>
                       )}
                     </span>
@@ -545,7 +553,7 @@ export default async function SessionPage({
                             : "border-line bg-paper text-muted"
                         }`}
                       >
-                        {bracketLabel(g)}
+                        {label(g)}
                       </span>
                     )}
                     {g.pinned && (
@@ -754,14 +762,21 @@ export default async function SessionPage({
         )}
       </section>
 
-      {/* completed games */}
-      <section>
+      {/* completed games: tournament bracket games first, then regular play */}
+      {completedSections.map((section, sIdx) => (
+      <section
+        key={section.title}
+        className={sIdx < completedSections.length - 1 ? "mb-6" : undefined}
+      >
         <SectionTitle>
-          Completed{" "}
-          <span className="text-sm text-muted">({completed.length})</span>
+          {section.title}{" "}
+          <span className="text-sm text-muted">({section.games.length})</span>
         </SectionTitle>
+        {section.note && (
+          <p className="-mt-1 mb-2 text-xs text-muted">{section.note}</p>
+        )}
         <ul className="space-y-2">
-          {completed.map((g) => {
+          {section.games.map((g) => {
             const duration =
               g.startedAt && g.completedAt
                 ? formatDuration(
@@ -777,9 +792,15 @@ export default async function SessionPage({
                 <div className="flex items-center justify-between border-b border-rule pb-2">
                   <span className="flex items-center">
                     <GameNo seq={g.seq} />
-                    {g.stage !== null && (
-                      <span className="rounded-full border border-[#d89a7c] bg-[#f9e9df] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-clay">
-                        {bracketLabel(g)}
+                    {g.round !== null && (
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+                          g.stage !== null
+                            ? "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
+                            : "border-line bg-paper text-muted"
+                        }`}
+                      >
+                        {label(g)}
                       </span>
                     )}
                   </span>
@@ -871,6 +892,7 @@ export default async function SessionPage({
           })}
         </ul>
       </section>
+      ))}
             </>
           ),
         }}

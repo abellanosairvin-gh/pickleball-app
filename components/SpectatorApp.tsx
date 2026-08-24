@@ -84,6 +84,25 @@ export function SpectatorApp({ token }: { token: string }) {
     );
   }
 
+  // Finished bracket games get their own section above regular history.
+  const bracketHistory = snapshot.history.filter((g) => g.label !== null);
+  const historySections = [
+    ...(bracketHistory.length > 0
+      ? [
+          {
+            title: "Tournament",
+            note: "Bracket results stay off the leaderboard.",
+            games: bracketHistory,
+          },
+        ]
+      : []),
+    {
+      title: "History",
+      note: null,
+      games: snapshot.history.filter((g) => g.label === null),
+    },
+  ];
+
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col">
       <header className="border-b-2 border-ink px-5 pt-6 pb-3">
@@ -198,7 +217,7 @@ export function SpectatorApp({ token }: { token: string }) {
                 {g.label && (
                   <span
                     className={`ml-2 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
-                      g.label.startsWith("Round")
+                      g.stage === null
                         ? "border-line bg-paper text-muted"
                         : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
                     }`}
@@ -253,15 +272,19 @@ export function SpectatorApp({ token }: { token: string }) {
                 <LeaderboardTable rows={snapshot.leaderboard} />
               )}
             </section>
-            <section>
-              <h2 className="mb-2 font-display text-xl">History</h2>
+            {historySections.map((section) => (
+            <section key={section.title}>
+              <h2 className="mb-2 font-display text-xl">{section.title}</h2>
+              {section.note && (
+                <p className="-mt-1 mb-2 text-xs text-muted">{section.note}</p>
+              )}
               <ul className="space-y-2.5">
-                {snapshot.history.length === 0 && (
+                {section.games.length === 0 && (
                   <p className="p-6 text-center text-sm text-muted">
                     No completed games yet.
                   </p>
                 )}
-            {snapshot.history.map((g) => (
+            {section.games.map((g) => (
               <li
                 key={g.id}
                 className="rounded-md border border-line bg-card p-3 text-sm shadow-[0_1px_0_#d9d2c2]"
@@ -269,8 +292,14 @@ export function SpectatorApp({ token }: { token: string }) {
                 <div className="flex items-center justify-between">
                   <span>
                     <GameNo seq={g.seq} />
-                    {g.label && !g.label.startsWith("Round") && (
-                      <span className="mr-2 rounded-full border border-[#d89a7c] bg-[#f9e9df] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-clay">
+                    {g.label && (
+                      <span
+                        className={`mr-2 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+                          g.stage === null
+                            ? "border-line bg-paper text-muted"
+                            : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
+                        }`}
+                      >
                         {g.label}
                       </span>
                     )}
@@ -303,6 +332,7 @@ export function SpectatorApp({ token }: { token: string }) {
             ))}
               </ul>
             </section>
+            ))}
           </div>
         )}
       </main>

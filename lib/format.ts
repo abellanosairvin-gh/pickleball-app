@@ -41,16 +41,6 @@ export function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
-/** Bracket-game display label: "Championship", "Battle for 3rd", or "Round N". */
-export function bracketLabel(g: {
-  round: number | null;
-  stage: "final" | "bronze" | null;
-}): string | null {
-  if (g.stage === "final") return "Championship";
-  if (g.stage === "bronze") return "Battle for 3rd";
-  return g.round !== null ? `Round ${g.round}` : null;
-}
-
 /** Display names for matchup modes ("fixed" is shown as Manual). */
 export const MODE_LABEL: Record<string, string> = {
   random: "Random · Fair Rotation",

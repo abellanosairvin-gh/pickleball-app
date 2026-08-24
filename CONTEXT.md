@@ -52,7 +52,7 @@ _Avoid_: Mixed rule
 A numbered playing surface (1..N, count set per Session) that hosts at most one in-progress Game at a time.
 
 **Leaderboard**:
-Per-Session standings covering the whole event: wins, losses, points scored, points given up, and +/- per Player, sorted by wins, then losses, then +/-.
+Per-Session standings covering the whole event: wins, losses, points scored, points given up, and +/- per Player, sorted by wins, then losses, then +/-. Counts regular Games only, up to the Game Cap; Tournament bracket Games never count (their outcome is shown on the championship ladder).
 _Avoid_: Standings, rankings
 
 **Spectator View**:
