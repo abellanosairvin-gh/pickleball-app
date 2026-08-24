@@ -1,0 +1,17 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Court Night", "x": 0, "y": 0, "w": 390, "h": 844 },
+    { "file": "ClubPaper.dc.html", "title": "Club Paper", "x": 480, "y": 0, "w": 390, "h": 844 },
+    { "file": "MatchPoint.dc.html", "title": "Match Point", "x": 960, "y": 0, "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    {
+      "id": "direction-brief",
+      "x": 0,
+      "y": -200,
+      "w": 560,
+      "text": "Three directions for the spectator view — same content, three aesthetics. Pick one and I'll build out every screen (organizer console, dashboard, login) in that direction, then apply it to the app code.\n\nCourt Night — courtside scoreboard: dark, optic-ball lime, condensed athletic type. Most glanceable from a distance; boldest change.\nClub Paper — warm racquet-club editorial: cream paper, deep green ink, serif headings. Friendliest and most distinctive; least \"live sports\" energy.\nMatch Point — refined version of today's emerald utility: sharper hierarchy, court chips, tabular numbers. Least risk, least change."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

@@ -1,0 +1,5 @@
+# Pre-generated, best-effort schedule instead of rolling matchup generation
+
+The whole Session schedule is generated up front (honoring the Game Cap, rating compatibility, the Gender Balance Rule, and partner uniqueness — no two Players partnered twice in a Session — as hard constraints; opponent variety and game spacing as soft preferences), rather than forming each game on the fly as courts free up. When the constraints make a full schedule impossible, generation is best-effort: it produces the maximum legal schedule and reports which players fall short of the cap, leaving the organizer to hand-fix via the queue editor. Roster changes mid-session regenerate only the unplayed tail of the schedule, preserving completed, in-progress, and hand-pinned games.
+
+Rolling generation was the considered alternative — it adapts naturally to departures — but was rejected because the organizer wants the whole night visible and editable from the start; regeneration-of-the-tail recovers most of rolling's flexibility.

@@ -1,0 +1,3 @@
+# Next.js + Neon Postgres + Drizzle, deployed on Vercel
+
+The organizer chose Vercel as the deployment target and delegated the rest of the stack. Vercel's serverless filesystem rules out SQLite (no persistent file storage), so the database is hosted Postgres (Neon free tier) accessed via Drizzle ORM. The app is a single Next.js (App Router, TypeScript) project with Tailwind for styling; auth is a single shared organizer credential set via environment variables with a session cookie — no auth provider, no user table. The spectator view uses light polling (~10s), not websockets, which keeps everything within Vercel's plain request/response model.

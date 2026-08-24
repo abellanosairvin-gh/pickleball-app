@@ -1,0 +1,292 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { courtName, formatDuration } from "@/lib/format";
+import { RunningClock } from "./RunningClock";
+import type { GameView, Snapshot } from "@/lib/queries";
+
+const TABS = ["Playing", "Queue", "Results"] as const;
+type Tab = (typeof TABS)[number];
+
+const POLL_MS = 10_000;
+
+function Team({
+  names,
+  winner,
+  sep = " & ",
+}: {
+  names: [string, string];
+  winner?: boolean;
+  sep?: string;
+}) {
+  return (
+    <span className={winner ? "font-semibold" : ""}>
+      {names[0]}
+      {sep}
+      {names[1]}
+    </span>
+  );
+}
+
+function Vs({ g }: { g: GameView }) {
+  return (
+    <span>
+      <Team names={g.team1.names} sep="/" />{" "}
+      <span className="font-serif italic text-faint">vs</span>{" "}
+      <Team names={g.team2.names} sep="/" />
+    </span>
+  );
+}
+
+function GameNo({ seq }: { seq: number }) {
+  return (
+    <span className="mr-2 text-xs uppercase tracking-[0.14em] text-faint">
+      No. {seq}
+    </span>
+  );
+}
+
+export function SpectatorApp({ token }: { token: string }) {
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [tab, setTab] = useState<Tab>("Playing");
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/public/${token}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(String(res.status));
+        const json = (await res.json()) as Snapshot;
+        if (alive) {
+          setSnapshot(json);
+          setFailed(false);
+        }
+      } catch {
+        if (alive) setFailed(true);
+      }
+    };
+    load();
+    const t = setInterval(load, POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [token]);
+
+  if (!snapshot) {
+    return (
+      <p className="p-8 text-center text-muted">
+        {failed ? "Session not found." : "Loading…"}
+      </p>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex min-h-screen max-w-lg flex-col">
+      <header className="border-b-2 border-ink px-5 pt-6 pb-3">
+        <h1 className="font-display text-3xl leading-tight">
+          {snapshot.session.name}
+        </h1>
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs uppercase tracking-[0.14em] text-muted">
+            {snapshot.session.courtCount} courts · cap {snapshot.session.gameCap}{" "}
+            games
+          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-clay">
+            {snapshot.session.status === "ended" ? "Final results" : "In play"}
+          </p>
+        </div>
+      </header>
+
+      <nav className="sticky top-0 z-10 flex border-b border-line bg-card">
+        {TABS.map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 border-b-2 p-3.5 text-[13px] uppercase tracking-[0.1em] ${
+              tab === t
+                ? "border-clay font-bold text-ink"
+                : "border-transparent font-medium text-muted"
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </nav>
+
+      <main className="flex-1 p-4">
+        {tab === "Playing" && (
+          <div className="space-y-3.5">
+            {snapshot.playing.length === 0 && (
+              <p className="p-6 text-center text-sm text-muted">
+                No games in progress.
+              </p>
+            )}
+            {snapshot.playing
+              .slice()
+              .sort((a, b) => (a.court ?? 0) - (b.court ?? 0))
+              .map((g) => (
+                <div
+                  key={g.id}
+                  className="rounded-md border border-line bg-card p-4 shadow-[0_1px_0_#d9d2c2]"
+                >
+                  <div className="flex items-baseline justify-between border-b border-rule pb-2">
+                    <span className="text-xs font-bold uppercase tracking-[0.16em] text-clay">
+                      {courtName(g.court ?? 0)}
+                    </span>
+                    <span className="text-xs text-muted">
+                      No. {g.seq}
+                      {g.startedAt && (
+                        <>
+                          {" · "}
+                          <span className="font-semibold text-clay">
+                            <RunningClock since={g.startedAt} />
+                          </span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 flex items-center gap-3">
+                    <div className="flex-1 font-display text-xl leading-snug">
+                      {g.team1.names[0]}
+                      <br />
+                      {g.team1.names[1]}
+                    </div>
+                    <div className="font-serif text-xs italic tracking-wide text-muted">
+                      versus
+                    </div>
+                    <div className="flex-1 text-right font-display text-xl leading-snug">
+                      {g.team2.names[0]}
+                      <br />
+                      {g.team2.names[1]}
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {tab === "Queue" && (
+          <ol className="space-y-2.5">
+            {snapshot.queue.length === 0 && (
+              <p className="p-6 text-center text-sm text-muted">
+                Nothing queued.
+              </p>
+            )}
+            {snapshot.queue.map((g, i) => (
+              <li
+                key={g.id}
+                className={`rounded-md border bg-card p-3 text-sm shadow-[0_1px_0_#d9d2c2] ${
+                  i === 0 ? "border-clay" : "border-line"
+                }`}
+              >
+                {i === 0 && (
+                  <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-clay">
+                    Up next
+                  </p>
+                )}
+                <GameNo seq={g.seq} />
+                <Vs g={g} />
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {tab === "Results" && (
+          <div className="space-y-6">
+            <section>
+              <h2 className="mb-2 font-display text-xl">Leaderboard</h2>
+              <div className="overflow-x-auto rounded-md border border-line bg-card shadow-[0_1px_0_#d9d2c2]">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-[11px] uppercase tracking-[0.14em] text-muted">
+                  <th className="p-2.5 font-semibold">Player</th>
+                  <th className="p-2.5 text-center font-semibold">W</th>
+                  <th className="p-2.5 text-center font-semibold">L</th>
+                  <th className="p-2.5 text-center font-semibold">PF</th>
+                  <th className="p-2.5 text-center font-semibold">PA</th>
+                  <th className="p-2.5 text-center font-semibold">+/−</th>
+                </tr>
+              </thead>
+              <tbody className="tabular-nums">
+                {snapshot.leaderboard.map((r, i) => (
+                  <tr key={r.playerId} className="border-b border-rule">
+                    <td className="p-2.5 font-medium">
+                      <span className="mr-1.5 text-faint">{i + 1}.</span>
+                      {r.name}
+                      {r.results.length > 0 && (
+                        <span
+                          title={r.results.join(" ")}
+                          className="ml-2 inline-flex items-center gap-0.5 align-middle"
+                        >
+                          {r.results.map((res, j) => (
+                            <span
+                              key={j}
+                              className={`inline-block h-1.5 w-2.5 rounded-full ${
+                                res === "W" ? "bg-ink" : "bg-clay"
+                              }`}
+                            />
+                          ))}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-2.5 text-center">{r.wins}</td>
+                    <td className="p-2.5 text-center">{r.losses}</td>
+                    <td className="p-2.5 text-center">{r.pointsFor}</td>
+                    <td className="p-2.5 text-center">{r.pointsAgainst}</td>
+                    <td className="p-2.5 text-center">
+                      {r.diff > 0 ? `+${r.diff}` : r.diff}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+              </div>
+            </section>
+            <section>
+              <h2 className="mb-2 font-display text-xl">History</h2>
+              <ul className="space-y-2.5">
+                {snapshot.history.length === 0 && (
+                  <p className="p-6 text-center text-sm text-muted">
+                    No completed games yet.
+                  </p>
+                )}
+            {snapshot.history.map((g) => (
+              <li
+                key={g.id}
+                className="rounded-md border border-line bg-card p-3 text-sm shadow-[0_1px_0_#d9d2c2]"
+              >
+                <div className="flex items-center justify-between">
+                  <span>
+                    <GameNo seq={g.seq} />
+                    <Team
+                      names={g.team1.names}
+                      winner={(g.score1 ?? 0) > (g.score2 ?? 0)}
+                    />{" "}
+                    <span className="font-display">
+                      {g.score1}–{g.score2}
+                    </span>{" "}
+                    <Team
+                      names={g.team2.names}
+                      winner={(g.score2 ?? 0) > (g.score1 ?? 0)}
+                    />
+                  </span>
+                  <span className="ml-2 shrink-0 text-xs text-faint tabular-nums">
+                    {g.durationMs !== null ? formatDuration(g.durationMs) : ""}
+                  </span>
+                </div>
+              </li>
+            ))}
+              </ul>
+            </section>
+          </div>
+        )}
+      </main>
+
+      <footer className="p-3.5 text-center text-[11px] uppercase tracking-[0.12em] text-faint">
+        Scores update automatically
+      </footer>
+    </div>
+  );
+}

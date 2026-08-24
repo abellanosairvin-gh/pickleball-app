@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* Club Paper design tokens — see design/ClubPaper.dc.html */
+@theme {
+  --color-paper: #f6f1e6; /* page background */
+  --color-card: #fffdf7; /* panel background */
+  --color-ink: #22382b; /* deep green text */
+  --color-ink-deep: #1a2c21; /* hover on ink surfaces */
+  --color-muted: #6f6a5e;
+  --color-faint: #a59d8c;
+  --color-line: #d9d2c2; /* card borders */
+  --color-rule: #eee7d8; /* inner hairlines */
+  --color-dash: #c9c0aa; /* dashed empty states */
+  --color-clay: #b95c38; /* terracotta accent */
+  --color-clay-deep: #96452a;
+
+  --font-display: var(--font-dm-serif), Georgia, serif;
+  --font-body: var(--font-public-sans), system-ui, sans-serif;
+}
+
+body {
+  @apply bg-paper text-ink font-body antialiased;
+}
+
+/* Tailwind v4's reset uses the default cursor on buttons; restore the
+   pointer on everything interactive so controls read as clickable. */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+select:not(:disabled),
+summary,
+label:has(input[type="checkbox"]),
+label:has(input[type="radio"]),
+a {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Club Paper: every button label reads in tracked uppercase. */
+button {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

@@ -1,0 +1,17 @@
+# Agent working files
+.memsearch/
+.scratch/
+
+# Dependencies / build
+node_modules/
+.next/
+out/
+
+# Env
+.env
+.env.local
+.env*.local
+
+# Misc
+*.tsbuildinfo
+next-env.d.ts
