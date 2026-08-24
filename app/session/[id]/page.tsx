@@ -14,6 +14,7 @@ import { ScoreEditPopup } from "@/components/ScoreEditPopup";
 import { ScoreForm } from "@/components/ScoreForm";
 import { WaitBadge } from "@/components/WaitBadge";
 import {
+  arrangeQueue,
   clearOutGames,
   deleteGame,
   deleteSession,
@@ -53,14 +54,47 @@ export const dynamic = "force-dynamic";
 
 const RATING_LABEL = { beginner: "B", mid: "M", advanced: "A" } as const;
 
-function teamNames(
-  g: Game,
-  byId: Map<number, Player>,
-  team: 1 | 2,
+/** A player's name; orange when this game is past their Game Cap (a fill-in). */
+function PlayerName({
+  id,
+  byId,
+  overCap,
+}: {
+  id: number;
+  byId: Map<number, Player>;
+  overCap: boolean;
+}) {
+  return (
+    <span
+      className={overCap ? "text-[#d97706]" : undefined}
+      title={overCap ? "Past the game cap - this game won't count for them" : undefined}
+    >
+      {byId.get(id)?.name ?? "?"}
+    </span>
+  );
+}
+
+function TeamNames({
+  g,
+  byId,
+  team,
   sep = " & ",
-) {
+  overCap,
+}: {
+  g: Game;
+  byId: Map<number, Player>;
+  team: 1 | 2;
+  sep?: string;
+  overCap: Set<number>;
+}) {
   const ids = team === 1 ? [g.t1p1, g.t1p2] : [g.t2p1, g.t2p2];
-  return ids.map((id) => byId.get(id)?.name ?? "?").join(sep);
+  return (
+    <>
+      <PlayerName id={ids[0]} byId={byId} overCap={overCap.has(ids[0])} />
+      {sep}
+      <PlayerName id={ids[1]} byId={byId} overCap={overCap.has(ids[1])} />
+    </>
+  );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -133,6 +167,34 @@ export default async function SessionPage({
     .sort(
       (a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0),
     );
+  // Which players are past their Game Cap in each open game: walk the
+  // night in play order (completed, on court, then the queue) counting
+  // regular games; a player's cap+1-th game onward is a fill-in that won't
+  // count for them - shown in orange on the courts and in the queue.
+  const overCapIn = new Map<number, Set<number>>();
+  {
+    const played = new Map<number, number>();
+    const inOrder = [
+      ...[...completed].reverse(),
+      ...[...playing].sort(
+        (a, b) =>
+          (a.startedAt?.getTime() ?? 0) - (b.startedAt?.getTime() ?? 0),
+      ),
+      ...queue,
+    ];
+    for (const g of inOrder) {
+      if (g.round !== null) continue;
+      for (const id of [g.t1p1, g.t1p2, g.t2p1, g.t2p2]) {
+        const n = (played.get(id) ?? 0) + 1;
+        played.set(id, n);
+        if (n > session.gameCap) {
+          if (!overCapIn.has(g.id)) overCapIn.set(g.id, new Set());
+          overCapIn.get(g.id)!.add(id);
+        }
+      }
+    }
+  }
+  const overCap = (g: Game) => overCapIn.get(g.id) ?? new Set<number>();
   // Finished bracket games get their own section above the regular games.
   const completedSections = [
     {
@@ -380,17 +442,17 @@ export default async function SessionPage({
                   )}
                   <div className="mt-2.5 flex items-center gap-3">
                     <div className="flex-1 font-display text-xl leading-snug">
-                      {byId.get(g.t1p1)?.name ?? "?"}
+                      <PlayerName id={g.t1p1} byId={byId} overCap={overCap(g).has(g.t1p1)} />
                       <br />
-                      {byId.get(g.t1p2)?.name ?? "?"}
+                      <PlayerName id={g.t1p2} byId={byId} overCap={overCap(g).has(g.t1p2)} />
                     </div>
                     <div className="font-serif text-xs italic tracking-wide text-muted">
                       versus
                     </div>
                     <div className="flex-1 text-right font-display text-xl leading-snug">
-                      {byId.get(g.t2p1)?.name ?? "?"}
+                      <PlayerName id={g.t2p1} byId={byId} overCap={overCap(g).has(g.t2p1)} />
                       <br />
-                      {byId.get(g.t2p2)?.name ?? "?"}
+                      <PlayerName id={g.t2p2} byId={byId} overCap={overCap(g).has(g.t2p2)} />
                     </div>
                   </div>
                   <ScoreForm
@@ -490,7 +552,7 @@ export default async function SessionPage({
                 <input type="hidden" name="sessionId" value={session.id} />
                 <ConfirmSubmit
                   title="Top up the queue?"
-                  message="Keeps every queued game and adds only the games players still need to reach the cap - typically the ones cleared after a player went Out. New games go to the end of the queue."
+                  message="Keeps every queued game and adds only the games players still need to reach the cap. When fewer than four players are short, players already at the cap fill the empty seats (those games don't count for them). New games go to the end of the queue."
                   confirmLabel="Top up"
                   className="rounded-md border-2 border-ink bg-card px-4 py-2 text-sm font-semibold text-ink hover:bg-paper"
                 >
@@ -498,6 +560,27 @@ export default async function SessionPage({
                 </ConfirmSubmit>
               </form>
             )}
+          {queue.filter((g) => g.round === null).length > 1 && (
+            <form action={arrangeQueue}>
+              <input type="hidden" name="sessionId" value={session.id} />
+              <ConfirmSubmit
+                title="Arrange the queue?"
+                message={`Reorders the queued games so nobody plays back-to-back - with ${session.courtCount} court${session.courtCount === 1 ? "" : "s"}, each player gets at least a game's rest where possible. Teams and opponents don't change; bracket games stay at the end.`}
+                confirmLabel="Arrange"
+                className="rounded-md border-2 border-ink bg-card px-4 py-2 text-sm font-semibold text-ink hover:bg-paper"
+              >
+                Arrange
+              </ConfirmSubmit>
+            </form>
+          )}
+          {available.length >= 4 && (
+            <FixedGamePopup
+              sessionId={session.id}
+              options={playerOptions(available)}
+              suggestions={suggestions}
+              enforceGender={session.defaultMode !== "ladder"}
+            />
+          )}
           {isTournament && tstatus?.phase !== "champions" && (
             <form action={startTournament}>
               <input type="hidden" name="sessionId" value={session.id} />
@@ -517,19 +600,11 @@ export default async function SessionPage({
               </ConfirmSubmit>
             </form>
           )}
-          {available.length >= 4 && (
-            <FixedGamePopup
-              sessionId={session.id}
-              options={playerOptions(available)}
-              suggestions={suggestions}
-              enforceGender={session.defaultMode !== "ladder"}
-            />
-          )}
           {/* TEMP dev tool - delete later */}
           <form action={simulateScores}>
             <input type="hidden" name="sessionId" value={session.id} />
             <button className="rounded-md border border-dashed border-dash px-4 py-2 text-sm font-medium text-muted hover:bg-paper">
-              Simulate scores
+              Simulate
             </button>
           </form>
         </section>
@@ -604,9 +679,9 @@ export default async function SessionPage({
                   <div className="text-sm">
                     <GameNo seq={g.seq} />
                     <span className={ready || idx === 0 ? "font-semibold" : ""}>
-                      {teamNames(g, byId, 1, "/")}{" "}
+                      <TeamNames g={g} byId={byId} team={1} sep="/" overCap={overCap(g)} />{" "}
                       <span className="font-serif italic text-faint">vs</span>{" "}
-                      {teamNames(g, byId, 2, "/")}
+                      <TeamNames g={g} byId={byId} team={2} sep="/" overCap={overCap(g)} />
                     </span>
                     {g.round !== null && (
                       <span

@@ -15,6 +15,14 @@ export type GenerateInput = {
    */
   existing: Matchup[];
   restarts?: number;
+  /**
+   * Fill-in mode (top-up): every game must seat at least one player still
+   * under the cap; the other seats may go to players already at the cap
+   * (at most one game over it), fewest games and longest wait first. Without
+   * it, only under-cap players are seated - three players short of a game
+   * get nothing.
+   */
+  fillIn?: boolean;
 };
 
 export type GenerateResult = {
@@ -100,7 +108,7 @@ const PARTITIONS: [Team, Team][] = [
 ];
 
 function runOnce(input: GenerateInput, rand: () => number) {
-  const { players, cap, mode, existing } = input;
+  const { players, cap, mode, existing, fillIn = false } = input;
   const byId = new Map(players.map((p) => [p.id, p]));
   const state: State = {
     counts: new Map(players.map((p) => [p.id, 0])),
@@ -127,8 +135,15 @@ function runOnce(input: GenerateInput, rand: () => number) {
   let totalPenalty = 0;
 
   for (;;) {
-    const eligible = players.filter((p) => (state.counts.get(p.id) ?? 0) < cap);
-    if (eligible.length < 4) break;
+    const count = (p: SchedPlayer) => state.counts.get(p.id) ?? 0;
+    const needy = players.filter((p) => count(p) < cap);
+    // Fill-in mode widens the pool to at-cap players (one game over, max);
+    // every game still has to seat someone who is lacking games.
+    const eligible = fillIn
+      ? players.filter((p) => count(p) < cap + 1)
+      : needy;
+    if (needy.length === 0 || eligible.length < 4) break;
+    const needyIds = new Set(needy.map((p) => p.id));
 
     // Prioritize fewest games played, then longest wait.
     const sorted = [...eligible].sort((a, b) => {
@@ -149,13 +164,18 @@ function runOnce(input: GenerateInput, rand: () => number) {
             for (let l = k + 1; l < n; l++) {
               const four = [pool[i], pool[j], pool[k], pool[l]];
               if (!ratingLegal(four)) continue;
+              const fillers = four.filter((p) => !needyIds.has(p.id)).length;
+              if (fillers === 4) continue; // must seat someone lacking games
               for (const [pi1, pi2] of PARTITIONS) {
                 const t1 = [four[pi1[0]], four[pi1[1]]];
                 const t2 = [four[pi2[0]], four[pi2[1]]];
                 if (state.partners.has(pairKey(t1[0].id, t1[1].id))) continue;
                 if (state.partners.has(pairKey(t2[0].id, t2[1].id))) continue;
                 if (!genderLegal(t1, t2)) continue;
-                const score = softScore(t1, t2, seq, state, mode, rand);
+                // Each fill-in seat is a game that won't count for that
+                // player - strongly prefer seating the lacking players.
+                const score =
+                  softScore(t1, t2, seq, state, mode, rand) + 12 * fillers;
                 if (!best || score < best.score) {
                   best = {
                     m: {
@@ -170,9 +190,11 @@ function runOnce(input: GenerateInput, rand: () => number) {
       return best;
     };
 
-    // Small pool of the most-deserving players first; widen if it has no legal game.
-    let best = findBest(sorted.slice(0, Math.min(9, sorted.length)));
-    if (!best && sorted.length > 9) best = findBest(sorted);
+    // Small pool of the most-deserving players first; widen if it has no
+    // legal game. In fill-in mode the lacking players always make the pool.
+    const head = Math.max(9, fillIn ? needy.length + 6 : 0);
+    let best = findBest(sorted.slice(0, Math.min(head, sorted.length)));
+    if (!best && sorted.length > head) best = findBest(sorted);
     if (!best) break;
 
     const { m } = best;
