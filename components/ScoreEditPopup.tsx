@@ -14,6 +14,7 @@ export function ScoreEditPopup({
   team2,
   score1,
   score2,
+  winningScore = 11,
 }: {
   sessionId: number;
   gameId: number;
@@ -22,6 +23,7 @@ export function ScoreEditPopup({
   team2: [string, string];
   score1: number | null;
   score2: number | null;
+  winningScore?: number;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -74,6 +76,7 @@ export function ScoreEditPopup({
                 action={submitScore}
                 onValid={() => setOpen(false)}
                 className="mt-4"
+                winningScore={winningScore}
               >
                 <input type="hidden" name="sessionId" value={sessionId} />
                 <input type="hidden" name="gameId" value={gameId} />
@@ -89,7 +92,7 @@ export function ScoreEditPopup({
                         name="score1"
                         type="number"
                         min={0}
-                        max={11}
+                        max={winningScore}
                         required
                         defaultValue={score1 ?? 0}
                         className="w-16 rounded-md border border-line bg-paper p-2 text-center tabular-nums"
@@ -108,7 +111,7 @@ export function ScoreEditPopup({
                         name="score2"
                         type="number"
                         min={0}
-                        max={11}
+                        max={winningScore}
                         required
                         defaultValue={score2 ?? 0}
                         className="w-16 rounded-md border border-line bg-paper p-2 text-center tabular-nums"

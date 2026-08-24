@@ -1,0 +1,165 @@
+// End-to-end tournament engine test against the real DB (cleans up after).
+// Run: npx tsx scripts/test-tournament.ts
+import { readFileSync } from "node:fs";
+
+const env = readFileSync(new URL("../.env.local", import.meta.url), "utf8");
+for (const line of env.split(/\r?\n/)) {
+  const m = line.match(/^([A-Z_]+)=(.*)$/);
+  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
+}
+
+const { db } = await import("../lib/db");
+const { games, players, sessions } = await import("../lib/schema");
+const { runTournamentRound, tournamentStatus } = await import(
+  "../lib/tournament"
+);
+const { and, asc, eq } = await import("drizzle-orm");
+
+let failures = 0;
+const check = (label: string, ok: boolean, extra = "") => {
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${extra ? ` — ${extra}` : ""}`);
+  if (!ok) failures++;
+};
+
+// --- setup: tournament session with 8 males + 4 females ---
+const [sess] = await db
+  .insert(sessions)
+  .values({
+    name: "TOURNEY-TEST",
+    courtCount: 2,
+    gameCap: 6,
+    defaultMode: "random",
+    tournament: true,
+    maleSlots: 8,
+    femaleSlots: 4,
+    publicToken: `tt${Date.now().toString(36)}`,
+  })
+  .returning();
+const sid = sess.id;
+
+const roster = await db
+  .insert(players)
+  .values([
+    ...Array.from({ length: 8 }, (_, i) => ({
+      sessionId: sid,
+      name: `M${i + 1}`,
+      gender: "M" as const,
+      rating: "mid" as const,
+    })),
+    ...Array.from({ length: 4 }, (_, i) => ({
+      sessionId: sid,
+      name: `F${i + 1}`,
+      gender: "F" as const,
+      rating: "mid" as const,
+    })),
+  ])
+  .returning();
+const byId = new Map(roster.map((p) => [p.id, p]));
+const genderOf = (id: number) => byId.get(id)!.gender;
+
+const loadGames = () =>
+  db
+    .select()
+    .from(games)
+    .where(eq(games.sessionId, sid))
+    .orderBy(asc(games.seq));
+
+const completeAll = async () => {
+  const open = (await loadGames()).filter((g) => g.status !== "completed");
+  for (const g of open) {
+    const t1Wins = Math.random() < 0.5;
+    await db
+      .update(games)
+      .set({
+        status: "completed",
+        score1: t1Wins ? 11 : Math.floor(Math.random() * 10),
+        score2: t1Wins ? Math.floor(Math.random() * 10) : 11,
+        completedAt: new Date(),
+      })
+      .where(eq(games.id, g.id));
+  }
+};
+
+try {
+  // The bracket never starts on its own — only via the organizer's button.
+  await runTournamentRound(sid);
+  check("no auto-start without the button", (await loadGames()).length === 0);
+
+  // Round 1: male qualifier — 8 males → 4 MM teams → 2 games, females idle.
+  await runTournamentRound(sid, { start: true });
+  let all = await loadGames();
+  let r1 = all.filter((g) => g.round === 1);
+  check("round 1 has 2 games", r1.length === 2, `got ${all.length} games`);
+  check(
+    "round 1 is MM vs MM only",
+    r1.every((g) =>
+      [g.t1p1, g.t1p2, g.t2p1, g.t2p2].every((id) => genderOf(id) === "M"),
+    ),
+  );
+  const r1players = new Set(r1.flatMap((g) => [g.t1p1, g.t1p2, g.t2p1, g.t2p2]));
+  check("round 1 uses all 8 males exactly once", r1players.size === 8);
+  // Engine is a no-op while the round is open.
+  await runTournamentRound(sid);
+  check("no-op while round open", (await loadGames()).length === 2);
+
+  await completeAll();
+  await runTournamentRound(sid);
+  all = await loadGames();
+  const r2 = all.filter((g) => g.round === 2);
+  check("round 2 has 2 games", r2.length === 2);
+  const mixedTeam = (a: number, b: number) =>
+    genderOf(a) !== genderOf(b);
+  check(
+    "round 2 is MF vs MF (finals)",
+    r2.every((g) => mixedTeam(g.t1p1, g.t1p2) && mixedTeam(g.t2p1, g.t2p2)),
+  );
+  const r2males = new Set(
+    r2.flatMap((g) => [g.t1p1, g.t1p2, g.t2p1, g.t2p2]).filter((id) => genderOf(id) === "M"),
+  );
+  const r1winners = new Set(
+    r1
+      .map((g) => {
+        const fresh = all.find((x) => x.id === g.id)!;
+        return fresh.score1! > fresh.score2!
+          ? [fresh.t1p1, fresh.t1p2]
+          : [fresh.t2p1, fresh.t2p2];
+      })
+      .flat(),
+  );
+  check(
+    "round 2 males are exactly the round 1 winners",
+    r2males.size === 4 && [...r2males].every((id) => r1winners.has(id)),
+  );
+  const r2females = new Set(
+    r2.flatMap((g) => [g.t1p1, g.t1p2, g.t2p1, g.t2p2]).filter((id) => genderOf(id) === "F"),
+  );
+  check("all 4 females join round 2", r2females.size === 4);
+
+  await completeAll();
+  await runTournamentRound(sid);
+  all = await loadGames();
+  const r3 = all.filter((g) => g.round === 3);
+  check("round 3 has 1 game (the final)", r3.length === 1);
+  check(
+    "final is MF vs MF",
+    r3.every((g) => mixedTeam(g.t1p1, g.t1p2) && mixedTeam(g.t2p1, g.t2p2)),
+  );
+
+  await completeAll();
+  await runTournamentRound(sid);
+  all = await loadGames();
+  check("no games after the final", all.length === 5, `got ${all.length}`);
+  const status = tournamentStatus(roster, all);
+  check(
+    "status reports champions",
+    status.phase === "champions" && status.champions !== undefined,
+    status.phase === "champions" ? `champions: ${status.champions!.join(" & ")}` : `phase=${status.phase}`,
+  );
+} finally {
+  await db.delete(games).where(eq(games.sessionId, sid));
+  await db.delete(players).where(eq(players.sessionId, sid));
+  await db.delete(sessions).where(eq(sessions.id, sid));
+}
+
+console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURES`);
+process.exit(failures === 0 ? 0 : 1);

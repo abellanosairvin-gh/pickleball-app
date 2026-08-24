@@ -20,6 +20,11 @@ export const sessions = pgTable("sessions", {
   })
     .notNull()
     .default("random"),
+  /** Tournament: an on/off option on top of the matchup mode. */
+  tournament: boolean("tournament").notNull().default(false),
+  /** Tournament roster capacity per gender (powers of two). */
+  maleSlots: integer("male_slots"),
+  femaleSlots: integer("female_slots"),
   publicToken: text("public_token").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -55,6 +60,8 @@ export const games = pgTable("games", {
   score1: integer("score1"),
   score2: integer("score2"),
   pinned: boolean("pinned").notNull().default(false),
+  /** Tournament mode: which bracket round this game belongs to (1-based). */
+  round: integer("round"),
   startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });

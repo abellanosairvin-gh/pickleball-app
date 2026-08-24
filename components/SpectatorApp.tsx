@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { courtName, formatDuration } from "@/lib/format";
+import { LeaderboardTable } from "./LeaderboardTable";
 import { RunningClock } from "./RunningClock";
 import type { GameView, Snapshot } from "@/lib/queries";
 
@@ -197,52 +198,35 @@ export function SpectatorApp({ token }: { token: string }) {
           <div className="space-y-6">
             <section>
               <h2 className="mb-2 font-display text-xl">Leaderboard</h2>
-              <div className="overflow-x-auto rounded-md border border-line bg-card shadow-[0_1px_0_#d9d2c2]">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-[11px] uppercase tracking-[0.14em] text-muted">
-                  <th className="p-2.5 font-semibold">Player</th>
-                  <th className="p-2.5 text-center font-semibold">W</th>
-                  <th className="p-2.5 text-center font-semibold">L</th>
-                  <th className="p-2.5 text-center font-semibold">PF</th>
-                  <th className="p-2.5 text-center font-semibold">PA</th>
-                  <th className="p-2.5 text-center font-semibold">+/−</th>
-                </tr>
-              </thead>
-              <tbody className="tabular-nums">
-                {snapshot.leaderboard.map((r, i) => (
-                  <tr key={r.playerId} className="border-b border-rule">
-                    <td className="p-2.5 font-medium">
-                      <span className="mr-1.5 text-faint">{i + 1}.</span>
-                      {r.name}
-                      {r.results.length > 0 && (
-                        <span
-                          title={r.results.join(" ")}
-                          className="ml-2 inline-flex items-center gap-0.5 align-middle"
-                        >
-                          {r.results.map((res, j) => (
-                            <span
-                              key={j}
-                              className={`inline-block h-1.5 w-2.5 rounded-full ${
-                                res === "W" ? "bg-ink" : "bg-clay"
-                              }`}
-                            />
-                          ))}
-                        </span>
+              {snapshot.session.tournament ? (
+                <div className="space-y-5">
+                  <div>
+                    <h3 className="mb-1.5 text-xs font-bold uppercase tracking-[0.16em] text-muted">
+                      Male — top {snapshot.session.maleSlots} make the playoffs
+                    </h3>
+                    <LeaderboardTable
+                      rows={snapshot.leaderboard.filter(
+                        (r) => r.gender === "M",
                       )}
-                    </td>
-                    <td className="p-2.5 text-center">{r.wins}</td>
-                    <td className="p-2.5 text-center">{r.losses}</td>
-                    <td className="p-2.5 text-center">{r.pointsFor}</td>
-                    <td className="p-2.5 text-center">{r.pointsAgainst}</td>
-                    <td className="p-2.5 text-center">
-                      {r.diff > 0 ? `+${r.diff}` : r.diff}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-              </div>
+                      qualifyCount={snapshot.session.maleSlots ?? 0}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="mb-1.5 text-xs font-bold uppercase tracking-[0.16em] text-muted">
+                      Female — top {snapshot.session.femaleSlots} make the
+                      playoffs
+                    </h3>
+                    <LeaderboardTable
+                      rows={snapshot.leaderboard.filter(
+                        (r) => r.gender === "F",
+                      )}
+                      qualifyCount={snapshot.session.femaleSlots ?? 0}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <LeaderboardTable rows={snapshot.leaderboard} />
+              )}
             </section>
             <section>
               <h2 className="mb-2 font-display text-xl">History</h2>

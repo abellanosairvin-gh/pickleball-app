@@ -20,6 +20,7 @@ export type GameView = {
 export type LeaderboardRow = {
   playerId: number;
   name: string;
+  gender: "M" | "F";
   wins: number;
   losses: number;
   pointsFor: number;
@@ -36,6 +37,9 @@ export type Snapshot = {
     status: Session["status"];
     courtCount: number;
     gameCap: number;
+    tournament: boolean;
+    maleSlots: number | null;
+    femaleSlots: number | null;
   };
   playing: GameView[];
   queue: GameView[];
@@ -83,6 +87,7 @@ export function computeLeaderboard(
       rows.set(p.id, {
         playerId: p.id,
         name: p.name,
+        gender: p.gender,
         wins: 0,
         losses: 0,
         pointsFor: 0,
@@ -183,6 +188,9 @@ export function buildSnapshot(
       status: session.status,
       courtCount: session.courtCount,
       gameCap: session.gameCap,
+      tournament: session.tournament,
+      maleSlots: session.maleSlots,
+      femaleSlots: session.femaleSlots,
     },
     playing: allGames.filter((g) => g.status === "playing").map(view),
     queue: allGames.filter((g) => g.status === "queued").map(view),
@@ -193,7 +201,12 @@ export function buildSnapshot(
           (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0),
       )
       .map(view),
-    leaderboard: computeLeaderboard(allPlayers, allGames, session.gameCap),
+    leaderboard: computeLeaderboard(
+      allPlayers,
+      allGames,
+      // Tournaments don't cap the leaderboard — every bracket game counts.
+      session.tournament ? 0 : session.gameCap,
+    ),
   };
 }
 

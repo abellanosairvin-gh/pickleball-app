@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { updateGame } from "@/lib/actions";
 import { GamePlayerPicker } from "./GamePlayerPicker";
 
-type Option = { id: number; label: string };
+type Option = { id: number; label: string; gender?: "M" | "F" };
 
 /** Pencil icon button that opens a dialog for editing a queued game's players. */
 export function GameEditPopup({
@@ -14,12 +14,14 @@ export function GameEditPopup({
   seq,
   options,
   defaults,
+  enforceGender,
 }: {
   sessionId: number;
   gameId: number;
   seq: number;
   options: Option[];
   defaults: [number, number, number, number];
+  enforceGender?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -83,6 +85,7 @@ export function GameEditPopup({
                   defaults={defaults}
                   submitLabel="Save"
                   onCancel={() => setOpen(false)}
+                  enforceGender={enforceGender}
                 />
               </form>
             </div>

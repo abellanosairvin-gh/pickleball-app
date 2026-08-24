@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSession, deleteSession, logout } from "@/lib/actions";
 import { ConfirmSubmit } from "@/components/ConfirmSubmit";
+import { ModePicker } from "@/components/ModePicker";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sessions } from "@/lib/schema";
@@ -64,18 +65,7 @@ export default async function DashboardPage() {
               className="mt-1 w-full rounded-md border border-line bg-card p-2 text-base font-normal text-ink"
             />
           </label>
-          <label className="col-span-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
-            Matchup mode
-            <select
-              name="defaultMode"
-              className="mt-1 w-full rounded-md border border-line bg-card p-2 text-base font-normal normal-case tracking-normal text-ink"
-            >
-              <option value="random">Random · Fair Rotation</option>
-              <option value="rating">Rating-Based · Even Matches</option>
-              <option value="fixed">Manual · Hand-Picked Games</option>
-              <option value="ladder">Winners · Losers · Genderless</option>
-            </select>
-          </label>
+          <ModePicker />
           <button
             type="submit"
             className="col-span-2 rounded-md bg-ink p-3 font-semibold text-card hover:bg-ink-deep"

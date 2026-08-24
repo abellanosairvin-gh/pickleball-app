@@ -5,17 +5,19 @@ import { createPortal } from "react-dom";
 import { createFixedGame } from "@/lib/actions";
 import { GamePlayerPicker } from "./GamePlayerPicker";
 
-type Option = { id: number; label: string };
+type Option = { id: number; label: string; gender?: "M" | "F" };
 
-/** Button that opens a dialog for hand-building a game (bypasses matchup rules). */
+/** Button that opens a dialog for hand-building a game. */
 export function FixedGamePopup({
   sessionId,
   options,
   suggestions,
+  enforceGender,
 }: {
   sessionId: number;
   options: Option[];
   suggestions?: [number, number, number, number][];
+  enforceGender?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -51,7 +53,7 @@ export function FixedGamePopup({
             >
               <h3 className="font-display text-xl leading-snug">Fixed game</h3>
               <p className="mt-1 text-xs text-muted">
-                Hand-picked and pinned — bypasses all matchup rules.
+                Hand-picked and pinned — regeneration won&rsquo;t touch it.
               </p>
               <form
                 action={createFixedGame}
@@ -64,6 +66,7 @@ export function FixedGamePopup({
                   submitLabel="Queue"
                   suggestions={suggestions}
                   onCancel={() => setOpen(false)}
+                  enforceGender={enforceGender}
                 />
               </form>
             </div>

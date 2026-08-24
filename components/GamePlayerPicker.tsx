@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 
-type Option = { id: number; label: string };
+type Option = { id: number; label: string; gender?: "M" | "F" };
 
 /**
  * The four player slots of a game (Team 1 = first two, Team 2 = last two),
- * with live validation: defaults to four different players and blocks
- * submitting while any player occupies more than one slot.
+ * with live validation: defaults to four different players (the first legal
+ * suggestion when one exists), blocks submitting while any player occupies
+ * more than one slot, and — when `enforceGender` is on — while the Gender
+ * Balance Rule is broken (an all-male team may only face an all-male team).
  */
 export function GamePlayerPicker({
   options,
@@ -15,6 +17,7 @@ export function GamePlayerPicker({
   submitLabel,
   suggestions,
   onCancel,
+  enforceGender = false,
 }: {
   options: Option[];
   defaults?: [number, number, number, number];
@@ -23,12 +26,25 @@ export function GamePlayerPicker({
   suggestions?: [number, number, number, number][];
   /** When set, renders a Cancel button to the left of the submit button. */
   onCancel?: () => void;
+  /** Apply the Gender Balance Rule to manual picks (off for ladder mode). */
+  enforceGender?: boolean;
 }) {
   const [vals, setVals] = useState<string[]>(() =>
-    (defaults ?? options.slice(0, 4).map((o) => o.id)).map(String),
+    (defaults ?? suggestions?.[0] ?? options.slice(0, 4).map((o) => o.id)).map(
+      String,
+    ),
   );
   const [suggestionIdx, setSuggestionIdx] = useState(0);
   const duplicated = new Set(vals).size !== 4;
+
+  const genderOf = new Map(options.map((o) => [String(o.id), o.gender]));
+  const allMale = (a: string, b: string) =>
+    genderOf.get(a) === "M" && genderOf.get(b) === "M";
+  const genderViolation =
+    enforceGender &&
+    !duplicated &&
+    options.some((o) => o.gender !== undefined) &&
+    allMale(vals[0], vals[1]) !== allMale(vals[2], vals[3]);
 
   const select = (i: number) => {
     // Players occupying the other three slots are hidden from this dropdown.
@@ -76,6 +92,12 @@ export function GamePlayerPicker({
           Each slot needs a different player.
         </p>
       )}
+      {genderViolation && (
+        <p className="text-xs text-clay-deep">
+          An all-male team can only face another all-male team — legal
+          matchups are MM vs MM, MF vs MF, FF vs FF, and MF vs FF.
+        </p>
+      )}
       <div className="mt-1 flex items-center gap-2">
         {suggestions && suggestions.length > 0 && (
           <button
@@ -116,7 +138,7 @@ export function GamePlayerPicker({
         )}
         <button
           type="submit"
-          disabled={duplicated}
+          disabled={duplicated || genderViolation}
           className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-card hover:bg-ink-deep disabled:opacity-40"
         >
           {submitLabel}

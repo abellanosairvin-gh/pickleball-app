@@ -12,6 +12,7 @@ import {
 } from "./auth";
 import { db } from "./db";
 import { runLadderMatchmaking } from "./ladder";
+import { runTournamentRound } from "./tournament";
 import { generateSchedule as runGenerator } from "./scheduler";
 import { games, players, sessions } from "./schema";
 import type { ParsedPlayer } from "./roster";
@@ -49,6 +50,13 @@ export async function createSession(formData: FormData) {
   const courtCount = clampInt(formData.get("courtCount"), 1, 20, 2);
   const gameCap = clampInt(formData.get("gameCap"), 1, 30, 6);
   const mode = pickMode(formData.get("defaultMode"));
+  const tournament = formData.get("tournament") === "on";
+  const maleSlots = tournament
+    ? pow2Slots(formData.get("maleSlots"), 8)
+    : null;
+  const femaleSlots = tournament
+    ? pow2Slots(formData.get("femaleSlots"), 4)
+    : null;
   const [row] = await db
     .insert(sessions)
     .values({
@@ -56,6 +64,9 @@ export async function createSession(formData: FormData) {
       courtCount,
       gameCap,
       defaultMode: mode,
+      tournament,
+      maleSlots,
+      femaleSlots,
       publicToken: randomUUID().replace(/-/g, "").slice(0, 12),
     })
     .returning({ id: sessions.id });
@@ -321,6 +332,17 @@ export async function updateGame(formData: FormData) {
   revalidate(sessionId);
 }
 
+/**
+ * Seeds the playoff bracket from the current standings (top-N per gender),
+ * or advances a stalled round. No-op while bracket games are still open.
+ */
+export async function startTournament(formData: FormData) {
+  await requireAuth();
+  const sessionId = Number(formData.get("sessionId"));
+  await runTournamentRound(sessionId, { start: true });
+  revalidate(sessionId);
+}
+
 export async function deleteGame(formData: FormData) {
   await requireAuth();
   const sessionId = Number(formData.get("sessionId"));
@@ -401,20 +423,22 @@ export async function submitScore(formData: FormData) {
   const gameId = Number(formData.get("gameId"));
   const score1 = Number(formData.get("score1"));
   const score2 = Number(formData.get("score2"));
+  const [game] = await db
+    .select()
+    .from(games)
+    .where(and(eq(games.id, gameId), eq(games.sessionId, sessionId)));
+  if (!game || game.status === "queued") return;
+  // Regular games go to 11; tournament bracket games go to 15.
+  const winningScore = game.round !== null ? 15 : 11;
   if (
     !Number.isInteger(score1) ||
     !Number.isInteger(score2) ||
     score1 < 0 ||
     score2 < 0 ||
     score1 === score2 || // no ties
-    Math.max(score1, score2) !== 11 // games are to 11 — winner scores exactly 11
+    Math.max(score1, score2) !== winningScore
   )
     return;
-  const [game] = await db
-    .select()
-    .from(games)
-    .where(and(eq(games.id, gameId), eq(games.sessionId, sessionId)));
-  if (!game || game.status === "queued") return;
   await db
     .update(games)
     .set({
@@ -424,8 +448,13 @@ export async function submitScore(formData: FormData) {
       completedAt: game.completedAt ?? new Date(),
     })
     .where(eq(games.id, gameId));
-  // A fresh completion (not a score edit) feeds ladder-mode matchmaking.
-  if (game.status === "playing") await runLadderMatchmaking(sessionId);
+  // A fresh completion (not a score edit) advances rolling matchmaking —
+  // the tournament bracket when it has started, otherwise ladder (both
+  // self-guard on the session's configuration).
+  if (game.status === "playing") {
+    await runTournamentRound(sessionId);
+    await runLadderMatchmaking(sessionId);
+  }
   revalidate(sessionId);
 }
 
@@ -443,4 +472,10 @@ function pickMode(
   return raw === "rating" || raw === "fixed" || raw === "ladder"
     ? raw
     : "random";
+}
+
+/** Clamp to [2, 64] and round down to a power of two (clean brackets). */
+function pow2Slots(raw: FormDataEntryValue | null, dflt: number) {
+  const n = clampInt(raw, 2, 64, dflt);
+  return 2 ** Math.floor(Math.log2(n));
 }
