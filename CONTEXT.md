@@ -49,7 +49,7 @@ A Matchup Mode where results drive the matchups: after each Game, the winners jo
 _Avoid_: King of the court, bracket
 
 **Gender Balance Rule**:
-A hard constraint on every generated Game: an all-male team may only face another all-male team. Any team containing a woman may face any other team containing a woman.
+A hard constraint on every generated Game: both teams have the same gender make-up - MM vs MM, MF vs MF, or FF vs FF. Never MM vs FF or MF vs FF. (Ladder mode and tournament brackets draw their own pairs and are exempt.)
 _Avoid_: Mixed rule
 
 **Court**:

@@ -9,7 +9,7 @@ type Option = { id: number; label: string; gender?: "M" | "F" };
  * with live validation: defaults to four different players (the first legal
  * suggestion when one exists), blocks submitting while any player occupies
  * more than one slot, and - when `enforceGender` is on - while the Gender
- * Balance Rule is broken (an all-male team may only face an all-male team).
+ * Balance Rule is broken (both teams need the same gender make-up).
  */
 export function GamePlayerPicker({
   options,
@@ -38,13 +38,13 @@ export function GamePlayerPicker({
   const duplicated = new Set(vals).size !== 4;
 
   const genderOf = new Map(options.map((o) => [String(o.id), o.gender]));
-  const allMale = (a: string, b: string) =>
-    genderOf.get(a) === "M" && genderOf.get(b) === "M";
+  const women = (a: string, b: string) =>
+    (genderOf.get(a) === "F" ? 1 : 0) + (genderOf.get(b) === "F" ? 1 : 0);
   const genderViolation =
     enforceGender &&
     !duplicated &&
     options.some((o) => o.gender !== undefined) &&
-    allMale(vals[0], vals[1]) !== allMale(vals[2], vals[3]);
+    women(vals[0], vals[1]) !== women(vals[2], vals[3]);
 
   const select = (i: number) => {
     // Players occupying the other three slots are hidden from this dropdown.
@@ -94,8 +94,8 @@ export function GamePlayerPicker({
       )}
       {genderViolation && (
         <p className="text-xs text-clay-deep">
-          An all-male team can only face another all-male team - legal
-          matchups are MM vs MM, MF vs MF, FF vs FF, and MF vs FF.
+          Both teams need the same gender make-up - legal matchups are
+          MM vs MM, MF vs MF, and FF vs FF.
         </p>
       )}
       <div className="mt-1 flex items-center gap-2">

@@ -14,7 +14,6 @@ import { ScoreEditPopup } from "@/components/ScoreEditPopup";
 import { ScoreForm } from "@/components/ScoreForm";
 import { WaitBadge } from "@/components/WaitBadge";
 import {
-  arrangeQueue,
   clearOutGames,
   deleteGame,
   deleteSession,
@@ -560,19 +559,6 @@ export default async function SessionPage({
                 </ConfirmSubmit>
               </form>
             )}
-          {queue.filter((g) => g.round === null).length > 1 && (
-            <form action={arrangeQueue}>
-              <input type="hidden" name="sessionId" value={session.id} />
-              <ConfirmSubmit
-                title="Arrange the queue?"
-                message={`Reorders the queued games so nobody plays back-to-back - with ${session.courtCount} court${session.courtCount === 1 ? "" : "s"}, each player gets at least a game's rest where possible. Teams and opponents don't change; bracket games stay at the end.`}
-                confirmLabel="Arrange"
-                className="rounded-md border-2 border-ink bg-card px-4 py-2 text-sm font-semibold text-ink hover:bg-paper"
-              >
-                Arrange
-              </ConfirmSubmit>
-            </form>
-          )}
           {available.length >= 4 && (
             <FixedGamePopup
               sessionId={session.id}

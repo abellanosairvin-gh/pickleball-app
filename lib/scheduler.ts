@@ -46,10 +46,14 @@ function ratingLegal(four: SchedPlayer[]): boolean {
   return !(hasBeginner && hasAdvanced);
 }
 
-/** Hard rule (Gender Balance): an all-male team may only face another all-male team. */
+/**
+ * Hard rule (Gender Balance): both teams have the same gender make-up -
+ * MM vs MM, MF vs MF, or FF vs FF. Never MM vs FF or MF vs FF.
+ */
 function genderLegal(t1: SchedPlayer[], t2: SchedPlayer[]): boolean {
-  const allMale = (t: SchedPlayer[]) => t.every((p) => p.gender === "M");
-  return allMale(t1) === allMale(t2);
+  const women = (t: SchedPlayer[]) =>
+    t.filter((p) => p.gender === "F").length;
+  return women(t1) === women(t2);
 }
 
 type State = {

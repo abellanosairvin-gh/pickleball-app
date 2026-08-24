@@ -11,7 +11,6 @@ import {
   setAuthCookie,
 } from "./auth";
 import { db } from "./db";
-import { arrangeQueue as computeArrangement } from "./arrange";
 import { runLadderMatchmaking } from "./ladder";
 import { runTournamentRound } from "./tournament";
 import { generateSchedule as runGenerator } from "./scheduler";
@@ -488,61 +487,6 @@ export async function deleteGame(formData: FormData) {
   await db
     .delete(games)
     .where(and(eq(games.id, gameId), eq(games.sessionId, sessionId)));
-  revalidate(sessionId);
-}
-
-/**
- * Reorders the regular queued games so players get rest between their
- * games (see lib/arrange.ts). Teams never change; bracket games keep their
- * place at the end of the queue.
- */
-export async function arrangeQueue(formData: FormData) {
-  await requireAuth();
-  const sessionId = Number(formData.get("sessionId"));
-  const [session] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, sessionId));
-  if (!session || session.status !== "active") return;
-  const open = await db
-    .select()
-    .from(games)
-    .where(
-      and(
-        eq(games.sessionId, sessionId),
-        inArray(games.status, ["queued", "playing"]),
-      ),
-    )
-    .orderBy(asc(games.queueOrder), asc(games.seq));
-  const asQueued = (g: (typeof open)[number]) => ({
-    id: g.id,
-    players: [g.t1p1, g.t1p2, g.t2p1, g.t2p2],
-  });
-  const playing = open
-    .filter((g) => g.status === "playing")
-    .sort(
-      (a, b) =>
-        (a.startedAt?.getTime() ?? 0) - (b.startedAt?.getTime() ?? 0),
-    )
-    .map(asQueued);
-  const queued = open.filter((g) => g.status === "queued" && g.round === null);
-  if (queued.length < 2) return;
-  const arranged = computeArrangement({
-    queue: queued.map(asQueued),
-    courtCount: session.courtCount,
-    playing,
-  });
-  // Hand the same queueOrder values back out in the new order, so the
-  // arranged games stay ahead of any bracket games queued after them.
-  const slots = queued.map((g) => g.queueOrder);
-  await Promise.all(
-    arranged.map((g, i) =>
-      db
-        .update(games)
-        .set({ queueOrder: slots[i] })
-        .where(and(eq(games.id, g.id), eq(games.sessionId, sessionId))),
-    ),
-  );
   revalidate(sessionId);
 }
 

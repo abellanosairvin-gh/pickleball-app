@@ -32,6 +32,8 @@ export type LeaderboardRow = {
   playerId: number;
   name: string;
   gender: "M" | "F";
+  /** Done for the night (see players.out). */
+  out: boolean;
   wins: number;
   losses: number;
   pointsFor: number;
@@ -101,6 +103,7 @@ export function computeLeaderboard(
         playerId: p.id,
         name: p.name,
         gender: p.gender,
+        out: p.out,
         wins: 0,
         losses: 0,
         pointsFor: 0,
