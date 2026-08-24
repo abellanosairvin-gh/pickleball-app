@@ -161,16 +161,11 @@ export function SpectatorApp({ token }: { token: string }) {
                   key={g.id}
                   className="rounded-md border border-line bg-card p-4 shadow-[0_1px_0_#d9d2c2]"
                 >
-                  <div className="flex items-baseline justify-between border-b border-rule pb-2">
-                    <span className="text-xs font-bold uppercase tracking-[0.16em] text-clay">
+                  <div className="flex items-baseline justify-between gap-3 border-b border-rule pb-2">
+                    <span className="shrink-0 text-xs font-bold uppercase tracking-[0.16em] text-clay">
                       {courtName(g.court ?? 0)}
-                      {g.label && (
-                        <span className="ml-2 rounded-full border border-[#d89a7c] bg-[#f9e9df] px-2 py-0.5 tracking-[0.12em]">
-                          {g.label}
-                        </span>
-                      )}
                     </span>
-                    <span className="text-xs text-muted">
+                    <span className="shrink-0 whitespace-nowrap text-xs text-muted">
                       No. {g.seq}
                       {g.startedAt && (
                         <>
@@ -182,8 +177,21 @@ export function SpectatorApp({ token }: { token: string }) {
                       )}
                     </span>
                   </div>
+                  {g.label && (
+                    <div className="mt-2">
+                      <span
+                        className={`inline-block rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+                          g.stage === null
+                            ? "border-line bg-paper text-muted"
+                            : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
+                        }`}
+                      >
+                        {g.label}
+                      </span>
+                    </div>
+                  )}
                   <div className="mt-2.5 flex items-center gap-3">
-                    <div className="flex-1 font-display text-xl leading-snug">
+                    <div className="min-w-0 flex-1 break-words font-display text-xl leading-snug">
                       {g.team1.names[0]}
                       <br />
                       {g.team1.names[1]}
@@ -191,7 +199,7 @@ export function SpectatorApp({ token }: { token: string }) {
                     <div className="font-serif text-xs italic tracking-wide text-muted">
                       versus
                     </div>
-                    <div className="flex-1 text-right font-display text-xl leading-snug">
+                    <div className="min-w-0 flex-1 break-words text-right font-display text-xl leading-snug">
                       {g.team2.names[0]}
                       <br />
                       {g.team2.names[1]}
@@ -224,15 +232,17 @@ export function SpectatorApp({ token }: { token: string }) {
                 <GameNo seq={g.seq} />
                 <Vs g={g} />
                 {g.label && (
-                  <span
-                    className={`ml-2 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
-                      g.stage === null
-                        ? "border-line bg-paper text-muted"
-                        : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
-                    }`}
-                  >
-                    {g.label}
-                  </span>
+                  <div className="mt-1.5">
+                    <span
+                      className={`inline-block rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+                        g.stage === null
+                          ? "border-line bg-paper text-muted"
+                          : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
+                      }`}
+                    >
+                      {g.label}
+                    </span>
+                  </div>
                 )}
               </li>
             ))}
