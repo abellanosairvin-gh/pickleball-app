@@ -8,7 +8,7 @@ type Option = { id: number; label: string; gender?: "M" | "F" };
  * The four player slots of a game (Team 1 = first two, Team 2 = last two),
  * with live validation: defaults to four different players (the first legal
  * suggestion when one exists), blocks submitting while any player occupies
- * more than one slot, and — when `enforceGender` is on — while the Gender
+ * more than one slot, and - when `enforceGender` is on - while the Gender
  * Balance Rule is broken (an all-male team may only face an all-male team).
  */
 export function GamePlayerPicker({
@@ -94,7 +94,7 @@ export function GamePlayerPicker({
       )}
       {genderViolation && (
         <p className="text-xs text-clay-deep">
-          An all-male team can only face another all-male team — legal
+          An all-male team can only face another all-male team - legal
           matchups are MM vs MM, MF vs MF, FF vs FF, and MF vs FF.
         </p>
       )}

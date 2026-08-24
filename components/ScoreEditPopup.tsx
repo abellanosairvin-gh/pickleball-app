@@ -70,7 +70,7 @@ export function ScoreEditPopup({
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="font-display text-xl leading-snug">
-                Edit score — No. {seq}
+                Edit score - No. {seq}
               </h3>
               <ScoreForm
                 action={submitScore}

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 /**
  * Full-screen blocking overlay shown while a server action is in flight
  * (form submits and direct action calls both go through fetch with a
- * `next-action` header — background polling does not, so the spectator
+ * `next-action` header - background polling does not, so the spectator
  * view's refreshes never trigger it). Appears with a short delay so fast
  * actions don't flash.
  */
@@ -35,7 +35,7 @@ export function PendingOverlay() {
       try {
         const res = await original(...args);
         if (isAction) {
-          // Headers arriving isn't done — hold until the RSC payload has
+          // Headers arriving isn't done - hold until the RSC payload has
           // fully streamed (a clone leaves the router's own read untouched).
           if (res.body) res.clone().arrayBuffer().then(finish, finish);
           else finish();

@@ -62,6 +62,8 @@ export const games = pgTable("games", {
   pinned: boolean("pinned").notNull().default(false),
   /** Tournament mode: which bracket round this game belongs to (1-based). */
   round: integer("round"),
+  /** Bracket medal games: the championship final or the battle for 3rd. */
+  stage: text("stage", { enum: ["final", "bronze"] }),
   startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });

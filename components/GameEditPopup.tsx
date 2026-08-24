@@ -71,7 +71,7 @@ export function GameEditPopup({
                 Edit game No. {seq}
               </h3>
               <p className="mt-1 text-xs text-muted">
-                Saving pins the game — regeneration won’t touch it.
+                Saving pins the game - regeneration won’t touch it.
               </p>
               <form
                 action={updateGame}

@@ -29,7 +29,7 @@ export function BulkAdd({ sessionId }: { sessionId: number }) {
         Add players
       </h3>
       <p className="mt-1 mb-2 text-xs text-muted">
-        One per line: <code>Name, gender, rating</code> — e.g.{" "}
+        One per line: <code>Name, gender, rating</code> - e.g.{" "}
         <code>Sarah, F, mid</code> or <code>Marc, M, b</code>. Paste from a
         spreadsheet works too.
       </p>
@@ -62,7 +62,7 @@ export function BulkAdd({ sessionId }: { sessionId: number }) {
             (l, i) =>
               !l.ok && (
                 <p key={i} className="text-xs text-clay-deep">
-                  ✗ “{l.line}” — {l.error}
+                  ✗ “{l.line}” - {l.error}
                 </p>
               ),
           )}

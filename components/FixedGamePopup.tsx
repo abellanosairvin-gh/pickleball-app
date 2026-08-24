@@ -53,7 +53,7 @@ export function FixedGamePopup({
             >
               <h3 className="font-display text-xl leading-snug">Fixed game</h3>
               <p className="mt-1 text-xs text-muted">
-                Hand-picked and pinned — regeneration won&rsquo;t touch it.
+                Hand-picked and pinned - regeneration won&rsquo;t touch it.
               </p>
               <form
                 action={createFixedGame}

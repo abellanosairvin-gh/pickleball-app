@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { courtName, formatDuration } from "@/lib/format";
+import { ChampionshipLadder } from "./ChampionshipLadder";
 import { LeaderboardTable } from "./LeaderboardTable";
 import { RunningClock } from "./RunningClock";
 import type { GameView, Snapshot } from "@/lib/queries";
@@ -135,6 +136,11 @@ export function SpectatorApp({ token }: { token: string }) {
                   <div className="flex items-baseline justify-between border-b border-rule pb-2">
                     <span className="text-xs font-bold uppercase tracking-[0.16em] text-clay">
                       {courtName(g.court ?? 0)}
+                      {g.label && (
+                        <span className="ml-2 rounded-full border border-[#d89a7c] bg-[#f9e9df] px-2 py-0.5 tracking-[0.12em]">
+                          {g.label}
+                        </span>
+                      )}
                     </span>
                     <span className="text-xs text-muted">
                       No. {g.seq}
@@ -189,6 +195,17 @@ export function SpectatorApp({ token }: { token: string }) {
                 )}
                 <GameNo seq={g.seq} />
                 <Vs g={g} />
+                {g.label && (
+                  <span
+                    className={`ml-2 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+                      g.label.startsWith("Round")
+                        ? "border-line bg-paper text-muted"
+                        : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
+                    }`}
+                  >
+                    {g.label}
+                  </span>
+                )}
               </li>
             ))}
           </ol>
@@ -196,13 +213,21 @@ export function SpectatorApp({ token }: { token: string }) {
 
         {tab === "Results" && (
           <div className="space-y-6">
+            {snapshot.podium.length > 0 && (
+              <section>
+                <h2 className="mb-2 font-display text-xl">
+                  Championship ladder
+                </h2>
+                <ChampionshipLadder podium={snapshot.podium} />
+              </section>
+            )}
             <section>
               <h2 className="mb-2 font-display text-xl">Leaderboard</h2>
               {snapshot.session.tournament ? (
                 <div className="space-y-5">
                   <div>
                     <h3 className="mb-1.5 text-xs font-bold uppercase tracking-[0.16em] text-muted">
-                      Male — top {snapshot.session.maleSlots} make the playoffs
+                      Male - top {snapshot.session.maleSlots} make the playoffs
                     </h3>
                     <LeaderboardTable
                       rows={snapshot.leaderboard.filter(
@@ -213,7 +238,7 @@ export function SpectatorApp({ token }: { token: string }) {
                   </div>
                   <div>
                     <h3 className="mb-1.5 text-xs font-bold uppercase tracking-[0.16em] text-muted">
-                      Female — top {snapshot.session.femaleSlots} make the
+                      Female - top {snapshot.session.femaleSlots} make the
                       playoffs
                     </h3>
                     <LeaderboardTable
@@ -244,6 +269,11 @@ export function SpectatorApp({ token }: { token: string }) {
                 <div className="flex items-center justify-between">
                   <span>
                     <GameNo seq={g.seq} />
+                    {g.label && !g.label.startsWith("Round") && (
+                      <span className="mr-2 rounded-full border border-[#d89a7c] bg-[#f9e9df] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-clay">
+                        {g.label}
+                      </span>
+                    )}
                     <Team
                       names={g.team1.names}
                       winner={(g.score1 ?? 0) > (g.score2 ?? 0)}
@@ -260,6 +290,15 @@ export function SpectatorApp({ token }: { token: string }) {
                     {g.durationMs !== null ? formatDuration(g.durationMs) : ""}
                   </span>
                 </div>
+                {g.uncounted.length > 0 && (
+                  <p className="mt-1.5 border-t border-rule pt-1.5 text-xs text-muted">
+                    <span className="font-bold uppercase tracking-[0.12em] text-faint">
+                      Not counted
+                    </span>{" "}
+                    - {g.uncounted.join(", ")} already at the game cap; this
+                    result stays off their leaderboard record.
+                  </p>
+                )}
               </li>
             ))}
               </ul>

@@ -12,7 +12,7 @@ const FIELD_CLASS =
 /**
  * Matchup-mode select plus the Tournament on/off option for the
  * create-session form. Ticking Tournament reveals the per-gender roster
- * slots (powers of two — clean brackets).
+ * slots (powers of two - clean brackets).
  */
 export function ModePicker() {
   const [tournament, setTournament] = useState(false);
@@ -65,7 +65,7 @@ export function ModePicker() {
           <p className="col-span-2 -mt-2 text-xs normal-case tracking-normal text-muted">
             If one gender outnumbers the other, it plays same-gender knockout
             rounds until the counts match; then every round draws fresh random
-            mixed pairs (MF vs MF) until one pair remains — the champions.
+            mixed pairs (MF vs MF) until one pair remains - the champions.
           </p>
         </>
       )}

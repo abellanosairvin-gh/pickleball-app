@@ -21,13 +21,16 @@ import {
   logout,
   moveGame,
   removePlayer,
+  simulateScores,
   startGame,
   startTournament,
   submitScore,
 } from "@/lib/actions";
+import { ChampionshipLadder } from "@/components/ChampionshipLadder";
 import { LeaderboardTable } from "@/components/LeaderboardTable";
 import { requireAuth } from "@/lib/auth";
 import {
+  bracketLabel,
   courtName,
   formatDuration,
   GENDER_LABEL,
@@ -94,19 +97,21 @@ export default async function SessionPage({
   const snapshot = buildSnapshot(session, allPlayers, allGames);
   const isTournament = session.tournament;
   // gameId → names whose result didn't count toward the leaderboard (over
-  // cap). Tournaments don't cap the leaderboard — every bracket game counts.
+  // cap). Applies to regular games in every session type; bracket games
+  // always count.
   const uncounted = new Map<number, string[]>();
-  computeLeaderboard(
-    allPlayers,
-    allGames,
-    isTournament ? 0 : session.gameCap,
-    uncounted,
-  );
+  computeLeaderboard(allPlayers, allGames, session.gameCap, uncounted);
   const tstatus = isTournament ? tournamentStatus(roster, allGames) : null;
   // Regular games go to 11; tournament bracket games go to 15.
   const target = (g: Game) => (g.round !== null ? 15 : 11);
   const bracketStarted = allGames.some((g) => g.round !== null);
-  const shortfall = computeShortfall(session, allPlayers, allGames);
+  // Bracket games don't count toward the Game Cap - shortfall is about the
+  // regular night games that build fair standings.
+  const shortfall = computeShortfall(
+    session,
+    allPlayers,
+    allGames.filter((g) => g.round === null),
+  );
   const playing = allGames.filter((g) => g.status === "playing");
   const queue = allGames
     .filter((g) => g.status === "queued")
@@ -128,7 +133,7 @@ export default async function SessionPage({
       );
     }
   }
-  // What the matchmaker would queue next — feeds the Fixed game Suggest
+  // What the matchmaker would queue next - feeds the Fixed game Suggest
   // button. The cap is lifted just past the busiest player so suggestions
   // keep coming for shortfall-filling games after most players hit the cap;
   // the hard rules (gender, rating, partner uniqueness) always apply.
@@ -213,22 +218,13 @@ export default async function SessionPage({
   return (
     <main className="mx-auto max-w-3xl p-4 pb-24">
       {/* header */}
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-2 border-b-2 border-ink pb-4">
-        <div>
-          <Link href="/" className="text-xs text-muted underline">
-            ← Sessions
-          </Link>
+      <div className="mb-5 border-b-2 border-ink pb-4">
+        <Link href="/" className="text-xs text-muted underline">
+          ← Sessions
+        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="font-display text-3xl leading-tight">{session.name}</h1>
-          <p className="mt-1 text-xs uppercase tracking-[0.14em] text-muted">
-            {session.courtCount} courts · cap {session.gameCap} games ·{" "}
-            {MODE_LABEL[session.defaultMode] ?? session.defaultMode}
-            {session.tournament ? " · Tournament" : ""} ·{" "}
-            <span className="font-semibold text-clay">
-              {ended ? "Ended" : "In play"}
-            </span>
-          </p>
-        </div>
-        <div className="flex gap-2">
+          <div className="flex gap-2">
           <QrPopup qrDataUrl={qrDataUrl} publicUrl={publicUrl} />
           {!ended && (
             <form action={endSession}>
@@ -263,12 +259,20 @@ export default async function SessionPage({
               Sign out
             </button>
           </form>
+          </div>
         </div>
+        <p className="mt-1 text-xs uppercase tracking-[0.14em] text-muted">
+          {session.courtCount} courts · cap {session.gameCap} games ·{" "}
+          {MODE_LABEL[session.defaultMode] ?? session.defaultMode}
+          {session.tournament ? " · Tournament" : ""} ·{" "}
+          <span className="font-semibold text-clay">
+            {ended ? "Ended" : "In play"}
+          </span>
+        </p>
       </div>
 
-      {/* shortfall banner (not meaningful when games form from results) */}
+      {/* shortfall banner (ladder excepted - its games form from results) */}
       {session.defaultMode !== "ladder" &&
-        !isTournament &&
         shortfall.length > 0 &&
         queue.length + playing.length + completed.length > 0 && (
         <div className="mb-4 rounded-md border border-[#e3c4b0] bg-[#f9e9df] p-3 text-sm text-ink">
@@ -310,8 +314,8 @@ export default async function SessionPage({
             </span>{" "}
             <span className="text-muted">
               {tstatus.phase === "not-started"
-                ? `— play the night; the top ${session.maleSlots} men and top ${session.femaleSlots} women on the leaderboard make the playoffs.`
-                : `— ${tstatus.aliveCount} players still in the bracket.`}
+                ? `- play the night; the top ${session.maleSlots} men and top ${session.femaleSlots} women on the leaderboard make the playoffs.`
+                : `- ${tstatus.aliveCount} players still in the bracket.`}
             </span>
           </div>
         ))}
@@ -329,6 +333,11 @@ export default async function SessionPage({
                   <div className="flex items-baseline justify-between border-b border-rule pb-2">
                     <span className="text-xs font-bold uppercase tracking-[0.16em] text-clay">
                       {courtName(court)}
+                      {g.round !== null && (
+                        <span className="ml-2 rounded-full border border-[#d89a7c] bg-[#f9e9df] px-2 py-0.5 tracking-[0.12em]">
+                          {bracketLabel(g)}
+                        </span>
+                      )}
                     </span>
                     <span className="text-xs text-muted">
                       No. {g.seq}
@@ -427,7 +436,7 @@ export default async function SessionPage({
               }
               message={
                 session.defaultMode === "ladder"
-                  ? "Queues one game for each waiting player. Nothing already queued is touched — results drive the rest of the night."
+                  ? "Queues one game for each waiting player. Nothing already queued is touched - results drive the rest of the night."
                   : queue.some((g) => !g.pinned)
                     ? "Un-started, un-pinned games are replaced. Completed, playing, and pinned games are kept."
                     : "Builds the full night’s games for the current roster."
@@ -458,7 +467,7 @@ export default async function SessionPage({
                 message={
                   bracketStarted
                     ? "Draws the next round once every bracket game is scored (rounds normally advance on their own)."
-                    : `Seeds the bracket from the standings — the top ${session.maleSlots} men and top ${session.femaleSlots} women qualify. Same-gender knockout first if one gender has more, then mixed MF rounds.`
+                    : `Seeds the bracket from the standings - the top ${session.maleSlots} men and top ${session.femaleSlots} women qualify. Same-gender knockout first if one gender has more, then mixed MF rounds.`
                 }
                 confirmLabel={bracketStarted ? "Advance round" : "Start playoffs"}
                 className="rounded-md border-2 border-clay bg-card px-4 py-2 text-sm font-semibold text-clay-deep hover:bg-[#f9e9df]"
@@ -475,6 +484,13 @@ export default async function SessionPage({
               enforceGender={session.defaultMode !== "ladder"}
             />
           )}
+          {/* TEMP dev tool - delete later */}
+          <form action={simulateScores}>
+            <input type="hidden" name="sessionId" value={session.id} />
+            <button className="rounded-md border border-dashed border-dash px-4 py-2 text-sm font-medium text-muted hover:bg-paper">
+              Simulate scores
+            </button>
+          </form>
         </section>
       )}
 
@@ -505,7 +521,7 @@ export default async function SessionPage({
               >
                 {ready && (
                   <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-ink">
-                    Ready — court open
+                    Ready - court open
                   </p>
                 )}
                 {blockers && (
@@ -522,8 +538,14 @@ export default async function SessionPage({
                       {teamNames(g, byId, 2, "/")}
                     </span>
                     {g.round !== null && (
-                      <span className="ml-2 rounded-full border border-line bg-paper px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-muted">
-                        Round {g.round}
+                      <span
+                        className={`ml-2 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
+                          g.stage !== null
+                            ? "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
+                            : "border-line bg-paper text-muted"
+                        }`}
+                      >
+                        {bracketLabel(g)}
                       </span>
                     )}
                     {g.pinned && (
@@ -698,13 +720,19 @@ export default async function SessionPage({
           ),
           results: (
             <>
+      {snapshot.podium.length > 0 && (
+        <section className="mb-6">
+          <SectionTitle>Championship ladder</SectionTitle>
+          <ChampionshipLadder podium={snapshot.podium} />
+        </section>
+      )}
       <section className="mb-6">
         <SectionTitle>Leaderboard</SectionTitle>
         {isTournament ? (
           <div className="space-y-5">
             <div>
               <h3 className="mb-1.5 text-xs font-bold uppercase tracking-[0.16em] text-muted">
-                Male — top {session.maleSlots} make the playoffs
+                Male - top {session.maleSlots} make the playoffs
               </h3>
               <LeaderboardTable
                 rows={snapshot.leaderboard.filter((r) => r.gender === "M")}
@@ -713,7 +741,7 @@ export default async function SessionPage({
             </div>
             <div>
               <h3 className="mb-1.5 text-xs font-bold uppercase tracking-[0.16em] text-muted">
-                Female — top {session.femaleSlots} make the playoffs
+                Female - top {session.femaleSlots} make the playoffs
               </h3>
               <LeaderboardTable
                 rows={snapshot.leaderboard.filter((r) => r.gender === "F")}
@@ -747,7 +775,14 @@ export default async function SessionPage({
                 className="rounded-md border border-line bg-card p-4 shadow-[0_1px_0_#d9d2c2]"
               >
                 <div className="flex items-center justify-between border-b border-rule pb-2">
-                  <GameNo seq={g.seq} />
+                  <span className="flex items-center">
+                    <GameNo seq={g.seq} />
+                    {g.stage !== null && (
+                      <span className="rounded-full border border-[#d89a7c] bg-[#f9e9df] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-clay">
+                        {bracketLabel(g)}
+                      </span>
+                    )}
+                  </span>
                   <span className="flex items-center gap-2">
                     <span className="text-xs text-faint tabular-nums">
                       {duration ?? ""}
@@ -827,7 +862,7 @@ export default async function SessionPage({
                     <span className="font-bold uppercase tracking-[0.12em] text-faint">
                       Not counted
                     </span>{" "}
-                    — {uncounted.get(g.id)!.join(", ")} already at the game
+                    - {uncounted.get(g.id)!.join(", ")} already at the game
                     cap; this result stays off their leaderboard record.
                   </p>
                 )}

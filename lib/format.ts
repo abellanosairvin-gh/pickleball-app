@@ -29,7 +29,7 @@ export const RATING_ABBR: Record<string, string> = {
   advanced: "ADV",
 };
 
-/** "45s", "23m 14s", "1h 02m 05s" — durations always show seconds. */
+/** "45s", "23m 14s", "1h 02m 05s" - durations always show seconds. */
 export function formatDuration(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(total / 3600);
@@ -39,6 +39,16 @@ export function formatDuration(ms: number): string {
   if (h > 0) return `${h}h ${pad(m)}m ${pad(s)}s`;
   if (m > 0) return `${m}m ${pad(s)}s`;
   return `${s}s`;
+}
+
+/** Bracket-game display label: "Championship", "Battle for 3rd", or "Round N". */
+export function bracketLabel(g: {
+  round: number | null;
+  stage: "final" | "bronze" | null;
+}): string | null {
+  if (g.stage === "final") return "Championship";
+  if (g.stage === "bronze") return "Battle for 3rd";
+  return g.round !== null ? `Round ${g.round}` : null;
 }
 
 /** Display names for matchup modes ("fixed" is shown as Manual). */

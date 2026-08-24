@@ -34,11 +34,11 @@ export function ScoreForm({
         const s2 = val("score2");
         if (s1 === s2) {
           e.preventDefault();
-          setError("No ties — one side has to win.");
+          setError("No ties - one side has to win.");
         } else if (Math.max(s1, s2) !== winningScore) {
           e.preventDefault();
           setError(
-            `Games go to ${winningScore} — the winning score must be ${winningScore}.`,
+            `Games go to ${winningScore} - the winning score must be ${winningScore}.`,
           );
         } else {
           setError(null);

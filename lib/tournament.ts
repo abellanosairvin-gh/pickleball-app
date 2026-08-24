@@ -20,7 +20,9 @@ function qualifiedPlayers(
   roster: Player[],
   allGames: Game[],
 ): Player[] {
-  const standings = computeLeaderboard(roster, allGames, 0);
+  // Same capped standings the leaderboard shows: extra fill-in games beyond
+  // the cap don't influence who qualifies.
+  const standings = computeLeaderboard(roster, allGames, session.gameCap);
   const rank = new Map(standings.map((r, i) => [r.playerId, i]));
   const byRank = (a: Player, b: Player) =>
     (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
@@ -38,10 +40,10 @@ function qualifiedPlayers(
  * night's games build the standings, and the top-N per gender (the
  * configured slots) qualify. Two phases:
  *
- * 1. Qualifier — while one gender outnumbers the other, the larger gender
+ * 1. Qualifier - while one gender outnumbers the other, the larger gender
  *    plays same-gender doubles knockout rounds (partners re-randomized each
  *    round); both players of a winning team advance, halving the field.
- * 2. Finals — once the gender counts are equal, every round draws fresh
+ * 2. Finals - once the gender counts are equal, every round draws fresh
  *    random mixed (MF) pairs from the surviving players; winners advance
  *    individually. The last game's winning pair are the champions.
  *
@@ -86,8 +88,9 @@ export async function runTournamentRound(
   } else {
     const ids = new Set<number>();
     for (const g of bracket) {
-      if (g.round !== lastRound) continue;
-      if (g.score1 === null || g.score2 === null) return; // unscored — wait
+      // Battle-for-3rd winners are already out of the title race.
+      if (g.round !== lastRound || g.stage === "bronze") continue;
+      if (g.score1 === null || g.score2 === null) return; // unscored - wait
       const winners =
         g.score1 > g.score2 ? [g.t1p1, g.t1p2] : [g.t2p1, g.t2p2];
       winners.forEach((id) => ids.add(id));
@@ -153,6 +156,12 @@ export async function runTournamentRound(
 
   const matchTeams = shuffle(bestTeams);
   const round = lastRound + 1;
+  // One game left between the last teams standing: the championship final.
+  const isFinal =
+    teams.length === 2 &&
+    (males.length === females.length ||
+      males.length === 0 ||
+      females.length === 0);
   let seq = Math.max(0, ...allGames.map((g) => g.seq));
   let queueOrder = Math.max(0, ...allGames.map((g) => g.queueOrder));
   const newGames: (typeof games.$inferInsert)[] = [];
@@ -163,11 +172,47 @@ export async function runTournamentRound(
       seq: ++seq,
       queueOrder: ++queueOrder,
       round,
+      stage: isFinal ? "final" : null,
       t1p1: t1[0].id,
       t1p2: t1[1].id,
       t2p1: t2[0].id,
       t2p2: t2[1].id,
     });
+  }
+
+  // Alongside the final, the semifinal losers play a battle for 3rd.
+  if (isFinal) {
+    const semis = bracket.filter(
+      (g) => g.round === lastRound && g.stage !== "bronze",
+    );
+    const losers = semis
+      .flatMap((g) =>
+        g.score1! > g.score2! ? [g.t2p1, g.t2p2] : [g.t1p1, g.t1p2],
+      )
+      .map((id) => byId.get(id))
+      .filter(Boolean) as Player[];
+    if (semis.length === 2 && losers.length === 4) {
+      const lm = shuffle(losers.filter((p) => p.gender === "M"));
+      const lf = shuffle(losers.filter((p) => p.gender === "F"));
+      const pool = lm.length === lf.length ? null : shuffle(losers);
+      const bronzeTeams: [Player, Player][] = pool
+        ? [
+            [pool[0], pool[1]],
+            [pool[2], pool[3]],
+          ]
+        : lm.map((p, i) => [p, lf[i]] as [Player, Player]);
+      newGames.push({
+        sessionId,
+        seq: ++seq,
+        queueOrder: ++queueOrder,
+        round,
+        stage: "bronze",
+        t1p1: bronzeTeams[0][0].id,
+        t1p2: bronzeTeams[0][1].id,
+        t2p1: bronzeTeams[1][0].id,
+        t2p2: bronzeTeams[1][1].id,
+      });
+    }
   }
   if (newGames.length > 0) await db.insert(games).values(newGames);
 }
@@ -198,12 +243,78 @@ export type TournamentStatus = {
   aliveCount: number;
 };
 
+export type PodiumEntry = { title: string; names: [string, string] };
+
+/**
+ * Final placements once the champions are crowned: the final's winning pair,
+ * the final's losing pair (1st runners-up), then the battle-for-3rd result
+ * (winners 2nd runners-up, losers 3rd) - those two entries wait until that
+ * game is scored. Older brackets without a battle for 3rd fall back to
+ * ranking the semifinal losing pairs by how close their loss was. Empty
+ * until the final has been played.
+ */
+export function championshipLadder(
+  roster: Player[],
+  allGames: Game[],
+): PodiumEntry[] {
+  if (tournamentStatus(roster, allGames).phase !== "champions") return [];
+  const byId = new Map(roster.map((p) => [p.id, p]));
+  const nameOf = (id: number) => byId.get(id)?.name ?? "?";
+  const pair = (ids: [number, number]): [string, string] => [
+    nameOf(ids[0]),
+    nameOf(ids[1]),
+  ];
+  const scored = (g: Game) =>
+    g.status === "completed" && g.score1 !== null && g.score2 !== null;
+  const winners = (g: Game): [number, number] =>
+    g.score1! > g.score2! ? [g.t1p1, g.t1p2] : [g.t2p1, g.t2p2];
+  const losers = (g: Game): [number, number] =>
+    g.score1! > g.score2! ? [g.t2p1, g.t2p2] : [g.t1p1, g.t1p2];
+  const bracket = allGames.filter(
+    (g) => g.round !== null && g.stage !== "bronze" && scored(g),
+  );
+  const lastRound = Math.max(...bracket.map((g) => g.round!));
+  const final = bracket.find((g) => g.round === lastRound)!;
+  const podium: PodiumEntry[] = [
+    { title: "Champions", names: pair(winners(final)) },
+    { title: "1st runners-up", names: pair(losers(final)) },
+  ];
+  const bronze = allGames.find((g) => g.stage === "bronze");
+  if (bronze) {
+    // Placements 3 and 4 wait for the battle for 3rd to finish.
+    if (scored(bronze)) {
+      podium.push(
+        { title: "2nd runners-up", names: pair(winners(bronze)) },
+        { title: "3rd runners-up", names: pair(losers(bronze)) },
+      );
+    }
+    return podium;
+  }
+  const semiLosers = allGames
+    .filter((g) => g.round === lastRound - 1 && g.stage !== "bronze" && scored(g))
+    .map((g) => ({
+      ids: losers(g),
+      margin: Math.abs(g.score1! - g.score2!),
+      scored: Math.min(g.score1!, g.score2!),
+    }))
+    .sort((a, b) => a.margin - b.margin || b.scored - a.scored);
+  const ordinals = ["2nd", "3rd"];
+  semiLosers.slice(0, ordinals.length).forEach((l, i) => {
+    podium.push({ title: `${ordinals[i]} runners-up`, names: pair(l.ids) });
+  });
+  return podium;
+}
+
 /** Derives bracket progress for display from already-loaded data. */
 export function tournamentStatus(
   roster: Player[],
   allGames: Game[],
 ): TournamentStatus {
-  const bracket = allGames.filter((g) => g.round !== null);
+  // The battle for 3rd is outside the title race - champions can be crowned
+  // while it is still being played.
+  const bracket = allGames.filter(
+    (g) => g.round !== null && g.stage !== "bronze",
+  );
   if (bracket.length === 0)
     return { phase: "not-started", round: 0, aliveCount: roster.length };
   const byId = new Map(roster.map((p) => [p.id, p]));

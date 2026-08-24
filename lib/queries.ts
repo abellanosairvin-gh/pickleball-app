@@ -1,6 +1,8 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "./db";
 import { games, players, sessions, type Game, type Player, type Session } from "./schema";
+import { bracketLabel } from "./format";
+import { championshipLadder, type PodiumEntry } from "./tournament";
 
 export type TeamView = { names: [string, string] };
 export type GameView = {
@@ -15,6 +17,10 @@ export type GameView = {
   pinned: boolean;
   startedAt: string | null;
   durationMs: number | null;
+  /** Bracket badge: "Championship", "Battle for 3rd", or "Round N". */
+  label: string | null;
+  /** Players already at the game cap whose result here didn't count. */
+  uncounted: string[];
 };
 
 export type LeaderboardRow = {
@@ -45,6 +51,8 @@ export type Snapshot = {
   queue: GameView[];
   history: GameView[];
   leaderboard: LeaderboardRow[];
+  /** Final tournament placements; empty until the bracket has finished. */
+  podium: PodiumEntry[];
 };
 
 export async function loadSessionData(sessionId: number) {
@@ -100,6 +108,9 @@ export function computeLeaderboard(
     return rows.get(p.id)!;
   };
   const byId = new Map(allPlayers.map((p) => [p.id, p]));
+  // Regular games counted per player, for the cap. Bracket games are exempt:
+  // playoffs always score, and never consume a player's cap slots.
+  const regularCounted = new Map<number, number>();
   // Every active player appears even with zero games; departed players appear
   // once they have a completed game (stats survive departure).
   for (const p of allPlayers) if (p.active) ensure(p);
@@ -121,16 +132,20 @@ export function computeLeaderboard(
         const p = byId.get(id);
         if (!p) continue;
         const row = ensure(p);
-        // Fairness: once a player has the cap's worth of counted games,
-        // extra games (e.g. filling someone else's shortfall) don't score
-        // for them — only for the players still under the cap.
-        if (gameCap > 0 && row.gamesPlayed >= gameCap) {
-          if (uncountedOut) {
-            const list = uncountedOut.get(g.id) ?? [];
-            list.push(p.name);
-            uncountedOut.set(g.id, list);
+        // Fairness: once a player has the cap's worth of counted regular
+        // games, extra games (e.g. filling someone else's shortfall) don't
+        // score for them - only for the players still under the cap.
+        if (gameCap > 0 && g.round === null) {
+          const n = regularCounted.get(id) ?? 0;
+          if (n >= gameCap) {
+            if (uncountedOut) {
+              const list = uncountedOut.get(g.id) ?? [];
+              list.push(p.name);
+              uncountedOut.set(g.id, list);
+            }
+            continue;
           }
-          continue;
+          regularCounted.set(id, n + 1);
         }
         row.gamesPlayed++;
         row.pointsFor += scored;
@@ -154,7 +169,11 @@ export function computeLeaderboard(
   );
 }
 
-function toGameView(g: Game, byId: Map<number, Player>): GameView {
+function toGameView(
+  g: Game,
+  byId: Map<number, Player>,
+  uncounted: string[] = [],
+): GameView {
   const name = (id: number) => byId.get(id)?.name ?? "?";
   const durationMs =
     g.startedAt && g.completedAt
@@ -172,6 +191,8 @@ function toGameView(g: Game, byId: Map<number, Player>): GameView {
     pinned: g.pinned,
     startedAt: g.startedAt?.toISOString() ?? null,
     durationMs,
+    label: bracketLabel(g),
+    uncounted,
   };
 }
 
@@ -181,7 +202,16 @@ export function buildSnapshot(
   allGames: Game[],
 ): Snapshot {
   const byId = new Map(allPlayers.map((p) => [p.id, p]));
-  const view = (g: Game) => toGameView(g, byId);
+  const uncounted = new Map<number, string[]>();
+  const leaderboard = computeLeaderboard(
+    allPlayers,
+    allGames,
+    // The cap applies to regular games in every session type; bracket games
+    // are exempt inside computeLeaderboard.
+    session.gameCap,
+    uncounted,
+  );
+  const view = (g: Game) => toGameView(g, byId, uncounted.get(g.id) ?? []);
   return {
     session: {
       name: session.name,
@@ -201,12 +231,8 @@ export function buildSnapshot(
           (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0),
       )
       .map(view),
-    leaderboard: computeLeaderboard(
-      allPlayers,
-      allGames,
-      // Tournaments don't cap the leaderboard — every bracket game counts.
-      session.tournament ? 0 : session.gameCap,
-    ),
+    leaderboard,
+    podium: session.tournament ? championshipLadder(allPlayers, allGames) : [],
   };
 }
 

@@ -149,7 +149,7 @@ export async function updatePlayer(formData: FormData) {
 
 /**
  * Removes a player from the roster (stats on completed games survive) and
- * deletes their un-started games — the organizer then regenerates the tail.
+ * deletes their un-started games - the organizer then regenerates the tail.
  */
 export async function removePlayer(formData: FormData) {
   await requireAuth();
@@ -202,7 +202,7 @@ export async function generateSchedule(formData: FormData) {
     .orderBy(asc(games.queueOrder), asc(games.seq));
 
   // Ladder mode: Generate only seeds a round for idle players (one game each,
-  // random and rule-respecting) — results drive everything after that, and
+  // random and rule-respecting) - results drive everything after that, and
   // nothing already queued is deleted.
   if (session.defaultMode === "ladder") {
     const busy = new Set<number>();
@@ -343,6 +343,54 @@ export async function startTournament(formData: FormData) {
   revalidate(sessionId);
 }
 
+/**
+ * TEMP dev tool (delete before real use): completes every queued/playing
+ * game with random valid scores so playoffs can be simulated. Each press
+ * finishes the open games and lets the bracket advance one round.
+ */
+export async function simulateScores(formData: FormData) {
+  await requireAuth();
+  const sessionId = Number(formData.get("sessionId"));
+  const [session] = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.id, sessionId));
+  if (!session || session.status !== "active") return;
+  const open = await db
+    .select()
+    .from(games)
+    .where(
+      and(
+        eq(games.sessionId, sessionId),
+        inArray(games.status, ["queued", "playing"]),
+      ),
+    )
+    .orderBy(asc(games.seq));
+  const base = Date.now();
+  for (const [i, g] of open.entries()) {
+    const target = g.round !== null ? 15 : 11;
+    const t1Wins = Math.random() < 0.5;
+    const loser = Math.floor(Math.random() * target);
+    const completedAt = new Date(base + i * 1000);
+    const startedAt =
+      g.startedAt ??
+      new Date(completedAt.getTime() - (8 + Math.floor(Math.random() * 8)) * 60000);
+    await db
+      .update(games)
+      .set({
+        status: "completed",
+        score1: t1Wins ? target : loser,
+        score2: t1Wins ? loser : target,
+        startedAt,
+        completedAt,
+      })
+      .where(eq(games.id, g.id));
+  }
+  await runTournamentRound(sessionId);
+  await runLadderMatchmaking(sessionId);
+  revalidate(sessionId);
+}
+
 export async function deleteGame(formData: FormData) {
   await requireAuth();
   const sessionId = Number(formData.get("sessionId"));
@@ -448,7 +496,7 @@ export async function submitScore(formData: FormData) {
       completedAt: game.completedAt ?? new Date(),
     })
     .where(eq(games.id, gameId));
-  // A fresh completion (not a score edit) advances rolling matchmaking —
+  // A fresh completion (not a score edit) advances rolling matchmaking -
   // the tournament bracket when it has started, otherwise ladder (both
   // self-guard on the session's configuration).
   if (game.status === "playing") {

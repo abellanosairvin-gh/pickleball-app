@@ -6,8 +6,8 @@ const pairKey = (a: number, b: number) => (a < b ? `${a}:${b}` : `${b}:${a}`);
 
 /**
  * Ladder mode ("winners vs winners"): called after a game completes. Players
- * whose last result was a win form the winners pool; losses — plus players
- * yet to finish a game (late arrivals) — form the losers pool. As soon as a
+ * whose last result was a win form the winners pool; losses - plus players
+ * yet to finish a game (late arrivals) - form the losers pool. As soon as a
  * pool holds four free players under the Game Cap, a game is queued from the
  * four longest-waiting, split into the pairing with the fewest repeated
  * partnerships. Results trump the rating and gender rules here; the Game Cap
