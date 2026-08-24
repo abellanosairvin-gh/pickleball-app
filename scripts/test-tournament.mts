@@ -242,6 +242,21 @@ try {
     "no podium before the bracket ends",
     championshipLadder(roster, all.filter((g) => g.round !== 3)).length === 0,
   );
+
+  // Hard rule: nobody partners the same person twice across bracket rounds.
+  const key = (a: number, b: number) => (a < b ? `${a}:${b}` : `${b}:${a}`);
+  const partnerCounts = new Map<string, number>();
+  for (const g of all.filter((x) => x.round !== null)) {
+    for (const pair of [key(g.t1p1, g.t1p2), key(g.t2p1, g.t2p2)]) {
+      partnerCounts.set(pair, (partnerCounts.get(pair) ?? 0) + 1);
+    }
+  }
+  const repeats = [...partnerCounts.entries()].filter(([, n]) => n > 1);
+  check(
+    "no repeated bracket partnerships",
+    repeats.length === 0,
+    repeats.length > 0 ? `repeated: ${repeats.map(([k]) => k).join(", ")}` : "",
+  );
 } finally {
   await db.delete(games).where(eq(games.sessionId, sid));
   await db.delete(players).where(eq(players.sessionId, sid));

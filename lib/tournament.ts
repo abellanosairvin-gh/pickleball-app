@@ -14,6 +14,133 @@ function shuffle<T>(arr: T[]): T[] {
   return out;
 }
 
+/** Every partnership (teammate pair) that appears in the given games. */
+function partnerships(list: Game[]): Set<string> {
+  const s = new Set<string>();
+  for (const g of list) {
+    s.add(pairKey(g.t1p1, g.t1p2));
+    s.add(pairKey(g.t2p1, g.t2p2));
+  }
+  return s;
+}
+
+/**
+ * Random male-female pairing where no pair is in `forbidden`, found by
+ * backtracking over shuffled orders. Null when no such pairing exists.
+ * Expects equally sized pools.
+ */
+function matchMixed(
+  males: Player[],
+  females: Player[],
+  forbidden: Set<string>,
+): [Player, Player][] | null {
+  const m = shuffle(males);
+  const f = shuffle(females);
+  const used = new Array<boolean>(f.length).fill(false);
+  const out: [Player, Player][] = [];
+  const place = (i: number): boolean => {
+    if (i === m.length) return true;
+    for (let j = 0; j < f.length; j++) {
+      if (used[j] || forbidden.has(pairKey(m[i].id, f[j].id))) continue;
+      used[j] = true;
+      out.push([m[i], f[j]]);
+      if (place(i + 1)) return true;
+      used[j] = false;
+      out.pop();
+    }
+    return false;
+  };
+  return place(0) ? out : null;
+}
+
+/**
+ * Random pairing of one pool into teams where no pair is in `forbidden`,
+ * found by backtracking over shuffled orders. An odd pool leaves one random
+ * player out (matches the round generator, which drops an odd team anyway).
+ * Null when no such pairing exists.
+ */
+function matchPool(
+  pool: Player[],
+  forbidden: Set<string>,
+): [Player, Player][] | null {
+  let p = shuffle(pool);
+  if (p.length % 2 === 1) p = p.slice(0, -1);
+  const used = new Array<boolean>(p.length).fill(false);
+  const out: [Player, Player][] = [];
+  const place = (): boolean => {
+    const i = used.findIndex((u) => !u);
+    if (i === -1) return true;
+    used[i] = true;
+    for (let j = i + 1; j < p.length; j++) {
+      if (used[j] || forbidden.has(pairKey(p[i].id, p[j].id))) continue;
+      used[j] = true;
+      out.push([p[i], p[j]]);
+      if (place()) return true;
+      used[j] = false;
+      out.pop();
+    }
+    used[i] = false;
+    return false;
+  };
+  return place() ? out : null;
+}
+
+/** Last resort when repeats are unavoidable: the draw with the fewest. */
+function leastRepeats(
+  draws: () => [Player, Player][],
+  forbidden: Set<string>,
+): [Player, Player][] {
+  let best: [Player, Player][] = draws();
+  let bestN = Infinity;
+  for (let attempt = 0; attempt < 20 && bestN > 0; attempt++) {
+    const cand = attempt === 0 ? best : draws();
+    const n = cand.filter((t) =>
+      forbidden.has(pairKey(t[0].id, t[1].id)),
+    ).length;
+    if (n < bestN) {
+      bestN = n;
+      best = cand;
+    }
+  }
+  return best;
+}
+
+/**
+ * Teams for one bracket round. Partnering the same person twice in the
+ * bracket is a hard rule: the draw first tries to also avoid the night's
+ * regular-game partnerships, then relaxes to bracket-only, and only if even
+ * that is mathematically impossible settles for the fewest repeats.
+ */
+function drawTeams(
+  males: Player[],
+  females: Player[],
+  bracketPairs: Set<string>,
+  anyPairs: Set<string>,
+): [Player, Player][] {
+  if (males.length === females.length) {
+    return (
+      matchMixed(males, females, anyPairs) ??
+      matchMixed(males, females, bracketPairs) ??
+      leastRepeats(() => {
+        const m = shuffle(males);
+        const f = shuffle(females);
+        return m.map((p, i) => [p, f[i]] as [Player, Player]);
+      }, bracketPairs)
+    );
+  }
+  const larger = males.length > females.length ? males : females;
+  return (
+    matchPool(larger, anyPairs) ??
+    matchPool(larger, bracketPairs) ??
+    leastRepeats(() => {
+      const p = shuffle(larger);
+      const out: [Player, Player][] = [];
+      for (let i = 0; i + 1 < p.length; i += 2) out.push([p[i], p[i + 1]]);
+      return out;
+    }, bracketPairs)
+  );
+}
+
 /** Playoff qualifiers: the top maleSlots men and top femaleSlots women by standings. */
 function qualifiedPlayers(
   session: Session,
@@ -41,11 +168,14 @@ function qualifiedPlayers(
  * configured slots) qualify. Two phases:
  *
  * 1. Qualifier - while one gender outnumbers the other, the larger gender
- *    plays same-gender doubles knockout rounds (partners re-randomized each
+ *    plays same-gender doubles knockout rounds (partners redrawn each
  *    round); both players of a winning team advance, halving the field.
  * 2. Finals - once the gender counts are equal, every round draws fresh
- *    random mixed (MF) pairs from the surviving players; winners advance
+ *    mixed (MF) pairs from the surviving players; winners advance
  *    individually. The last game's winning pair are the champions.
+ *
+ * Nobody partners the same person twice across bracket rounds (see
+ * drawTeams).
  *
  * Eliminated players get no further bracket games. A round is generated only
  * when no bracket game is queued or playing. Seeding round 1 requires
@@ -119,42 +249,21 @@ export async function runTournamentRound(
 
   // Build this round's teams: qualifier while genders are uneven (larger
   // gender plays same-gender; smaller gender sits out), finals once even
-  // (fresh random MF pairs every round).
-  let teams: [Player, Player][];
-  if (males.length !== females.length) {
-    const larger = males.length > females.length ? males : females;
-    if (larger.length < 4) return; // can't run a doubles round
-    const pool = shuffle(larger);
-    teams = [];
-    for (let i = 0; i + 1 < pool.length; i += 2) teams.push([pool[i], pool[i + 1]]);
-  } else {
-    const m = shuffle(males);
-    const f = shuffle(females);
-    teams = m.map((p, i) => [p, f[i]] as [Player, Player]);
+  // (fresh MF pairs every round). Nobody partners the same person twice in
+  // the bracket; the night's regular-game partnerships are also avoided
+  // whenever a repeat-free draw exists.
+  if (
+    males.length !== females.length &&
+    (males.length > females.length ? males : females).length < 4
+  ) {
+    return; // can't run a doubles round
   }
+  const bracketPairs = partnerships(bracket);
+  const anyPairs = partnerships(allGames);
+  const teams = drawTeams(males, females, bracketPairs, anyPairs);
   if (teams.length < 2) return;
 
-  // Pair teams into games, retrying a few shuffles to avoid repeat partners.
-  const partnerPairs = new Set<string>();
-  for (const g of allGames) {
-    partnerPairs.add(pairKey(g.t1p1, g.t1p2));
-    partnerPairs.add(pairKey(g.t2p1, g.t2p2));
-  }
-  let bestTeams = teams;
-  let bestRepeats = Infinity;
-  for (let attempt = 0; attempt < 12; attempt++) {
-    const candidate = attempt === 0 ? teams : reshuffleTeams(teams, males, females);
-    const repeats = candidate.filter((t) =>
-      partnerPairs.has(pairKey(t[0].id, t[1].id)),
-    ).length;
-    if (repeats < bestRepeats) {
-      bestRepeats = repeats;
-      bestTeams = candidate;
-    }
-    if (bestRepeats === 0) break;
-  }
-
-  const matchTeams = shuffle(bestTeams);
+  const matchTeams = shuffle(teams);
   const round = lastRound + 1;
   // One game left between the last teams standing: the championship final.
   const isFinal =
@@ -192,46 +301,30 @@ export async function runTournamentRound(
       .map((id) => byId.get(id))
       .filter(Boolean) as Player[];
     if (semis.length === 2 && losers.length === 4) {
-      const lm = shuffle(losers.filter((p) => p.gender === "M"));
-      const lf = shuffle(losers.filter((p) => p.gender === "F"));
-      const pool = lm.length === lf.length ? null : shuffle(losers);
-      const bronzeTeams: [Player, Player][] = pool
-        ? [
-            [pool[0], pool[1]],
-            [pool[2], pool[3]],
-          ]
-        : lm.map((p, i) => [p, lf[i]] as [Player, Player]);
-      newGames.push({
-        sessionId,
-        seq: ++seq,
-        queueOrder: ++queueOrder,
-        round,
-        stage: "bronze",
-        t1p1: bronzeTeams[0][0].id,
-        t1p2: bronzeTeams[0][1].id,
-        t2p1: bronzeTeams[1][0].id,
-        t2p2: bronzeTeams[1][1].id,
-      });
+      // Same no-repeat-partners rule — in particular, the losing semifinal
+      // pairs never replay as-is in the battle for 3rd.
+      const bronzeTeams = drawTeams(
+        losers.filter((p) => p.gender === "M"),
+        losers.filter((p) => p.gender === "F"),
+        bracketPairs,
+        anyPairs,
+      );
+      if (bronzeTeams.length === 2) {
+        newGames.push({
+          sessionId,
+          seq: ++seq,
+          queueOrder: ++queueOrder,
+          round,
+          stage: "bronze",
+          t1p1: bronzeTeams[0][0].id,
+          t1p2: bronzeTeams[0][1].id,
+          t2p1: bronzeTeams[1][0].id,
+          t2p2: bronzeTeams[1][1].id,
+        });
+      }
     }
   }
   if (newGames.length > 0) await db.insert(games).values(newGames);
-}
-
-/** Fresh random draw with the same composition rule as the original teams. */
-function reshuffleTeams(
-  original: [Player, Player][],
-  males: Player[],
-  females: Player[],
-): [Player, Player][] {
-  if (males.length === females.length && males.length === original.length) {
-    const m = shuffle(males);
-    const f = shuffle(females);
-    return m.map((p, i) => [p, f[i]] as [Player, Player]);
-  }
-  const pool = shuffle(original.flat());
-  const out: [Player, Player][] = [];
-  for (let i = 0; i + 1 < pool.length; i += 2) out.push([pool[i], pool[i + 1]]);
-  return out;
 }
 
 export type TournamentStatus = {
