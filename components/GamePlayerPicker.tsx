@@ -72,19 +72,25 @@ export function GamePlayerPicker({
   return (
     <>
       {/* Teams side by side, partners stacked - the same shape as a queue card. */}
-      <div className="flex items-end gap-2">
+      <div className="flex items-stretch gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-faint">
+          <span className="text-center text-[10px] font-bold uppercase tracking-[0.14em] text-faint">
             Team 1
           </span>
           {select(0)}
           {select(1)}
         </div>
-        <div className="pb-2.5 font-serif text-xs italic tracking-wide text-muted">
-          versus
+        <div className="flex flex-col gap-2">
+          {/* Same label row as the columns, so "versus" centres on the two selects. */}
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em]" aria-hidden="true">
+            &nbsp;
+          </span>
+          <div className="flex flex-1 items-center font-serif text-xs italic tracking-wide text-muted">
+            versus
+          </div>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <span className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-faint">
+          <span className="text-center text-[10px] font-bold uppercase tracking-[0.14em] text-faint">
             Team 2
           </span>
           {select(2)}
