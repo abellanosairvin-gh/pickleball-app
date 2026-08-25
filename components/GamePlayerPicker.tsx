@@ -56,7 +56,7 @@ export function GamePlayerPicker({
         onChange={(e) =>
           setVals((v) => v.map((x, j) => (j === i ? e.target.value : x)))
         }
-        className="min-w-0 flex-1 rounded-md border border-line bg-card p-2 text-sm"
+        className="w-full min-w-0 rounded-md border border-line bg-card p-2 text-sm"
       >
         {options
           .filter((o) => String(o.id) === vals[i] || !taken.has(String(o.id)))
@@ -71,16 +71,20 @@ export function GamePlayerPicker({
 
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="w-14 shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-faint">
+      {/* Teams side by side, partners stacked - the same shape as a queue card. */}
+      <div className="flex items-end gap-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-faint">
             Team 1
           </span>
           {select(0)}
           {select(1)}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-14 shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-faint">
+        <div className="pb-2.5 font-serif text-xs italic tracking-wide text-muted">
+          versus
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <span className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-faint">
             Team 2
           </span>
           {select(2)}
