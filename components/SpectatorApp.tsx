@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { courtName, formatDuration } from "@/lib/format";
+import { formatDuration } from "@/lib/format";
+import { BracketChip } from "./BracketChip";
 import { ChampionshipLadder } from "./ChampionshipLadder";
 import { LeaderboardTable } from "./LeaderboardTable";
-import { RunningClock } from "./RunningClock";
+import { PlayingCardHeader } from "./PlayingCardHeader";
 import type { GameView, Snapshot } from "@/lib/queries";
 
 const TABS = ["Playing", "Queue", "Results"] as const;
@@ -94,7 +95,7 @@ export function SpectatorApp({ token }: { token: string }) {
   }
 
   // Finished bracket games get their own section above regular history.
-  const bracketHistory = snapshot.history.filter((g) => g.label !== null);
+  const bracketHistory = snapshot.history.filter((g) => g.round !== null);
   const historySections = [
     ...(bracketHistory.length > 0
       ? [
@@ -108,7 +109,7 @@ export function SpectatorApp({ token }: { token: string }) {
     {
       title: "History",
       note: null,
-      games: snapshot.history.filter((g) => g.label === null),
+      games: snapshot.history.filter((g) => g.round === null),
     },
   ];
 
@@ -155,43 +156,21 @@ export function SpectatorApp({ token }: { token: string }) {
             )}
             {snapshot.playing
               .slice()
-              .sort((a, b) => (a.court ?? 0) - (b.court ?? 0))
+              .sort((a, b) => a.court - b.court)
               .map((g) => (
                 <div
                   key={g.id}
                   className="rounded-md border border-line bg-card p-4 shadow-[0_1px_0_#d9d2c2]"
                 >
-                  <div className="flex items-baseline justify-between gap-3 border-b border-rule pb-2">
-                    <span className="shrink-0 text-xs font-bold uppercase tracking-[0.16em] text-clay">
-                      {courtName(g.court ?? 0)}
-                    </span>
-                    <span className="shrink-0 whitespace-nowrap text-xs text-muted">
-                      No. {g.seq}
-                      {g.startedAt && (
-                        <>
-                          {" · "}
-                          <span className="font-semibold text-clay">
-                            <RunningClock since={g.startedAt} />
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  {g.label && (
-                    <div className="mt-2">
-                      <span
-                        className={`inline-block rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
-                          g.stage === null
-                            ? "border-line bg-paper text-muted"
-                            : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
-                        }`}
-                      >
-                        {g.label}
-                      </span>
-                    </div>
-                  )}
+                  <PlayingCardHeader
+                    court={g.court}
+                    seq={g.seq}
+                    startedAt={g.startedAt}
+                    label={g.label}
+                    stage={g.stage}
+                  />
                   <div className="mt-2.5 flex items-center gap-3">
-                    <div className="min-w-0 flex-1 break-words font-display text-xl leading-snug">
+                    <div className="min-w-0 flex-1 wrap-break-word hyphens-auto font-display text-xl leading-snug">
                       {g.team1.names[0]}
                       <br />
                       {g.team1.names[1]}
@@ -199,7 +178,7 @@ export function SpectatorApp({ token }: { token: string }) {
                     <div className="font-serif text-xs italic tracking-wide text-muted">
                       versus
                     </div>
-                    <div className="min-w-0 flex-1 break-words text-right font-display text-xl leading-snug">
+                    <div className="min-w-0 flex-1 wrap-break-word hyphens-auto text-right font-display text-xl leading-snug">
                       {g.team2.names[0]}
                       <br />
                       {g.team2.names[1]}
@@ -229,21 +208,16 @@ export function SpectatorApp({ token }: { token: string }) {
                     Up next
                   </p>
                 )}
+                {g.label && (
+                  <BracketChip
+                    block
+                    label={g.label}
+                    stage={g.stage}
+                    className="mb-1.5"
+                  />
+                )}
                 <GameNo seq={g.seq} />
                 <Vs g={g} />
-                {g.label && (
-                  <div className="mt-1.5">
-                    <span
-                      className={`inline-block rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
-                        g.stage === null
-                          ? "border-line bg-paper text-muted"
-                          : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
-                      }`}
-                    >
-                      {g.label}
-                    </span>
-                  </div>
-                )}
               </li>
             ))}
           </ol>
@@ -309,19 +283,9 @@ export function SpectatorApp({ token }: { token: string }) {
                 className="rounded-md border border-line bg-card p-3 text-sm shadow-[0_1px_0_#d9d2c2]"
               >
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center">
+                  <span className="flex min-w-0 flex-wrap items-center gap-y-1">
                     <GameNo seq={g.seq} />
-                    {g.label && (
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
-                          g.stage === null
-                            ? "border-line bg-paper text-muted"
-                            : "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
-                        }`}
-                      >
-                        {g.label}
-                      </span>
-                    )}
+                    {g.label && <BracketChip label={g.label} stage={g.stage} />}
                   </span>
                   <span className="ml-2 shrink-0 text-xs text-faint tabular-nums">
                     {g.durationMs !== null ? formatDuration(g.durationMs) : ""}

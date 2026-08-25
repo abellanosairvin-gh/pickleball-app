@@ -7,9 +7,10 @@ import { ConfirmSubmit } from "@/components/ConfirmSubmit";
 import { FixedGamePopup } from "@/components/FixedGamePopup";
 import { GameEditPopup } from "@/components/GameEditPopup";
 import { OrganizerTabs } from "@/components/OrganizerTabs";
+import { BracketChip } from "@/components/BracketChip";
+import { PlayingCardHeader } from "@/components/PlayingCardHeader";
 import { PlayerEditPopup } from "@/components/PlayerEditPopup";
 import { QrPopup } from "@/components/QrPopup";
-import { RunningClock } from "@/components/RunningClock";
 import { ScoreEditPopup } from "@/components/ScoreEditPopup";
 import { ScoreForm } from "@/components/ScoreForm";
 import { WaitBadge } from "@/components/WaitBadge";
@@ -316,7 +317,7 @@ export default async function SessionPage({
                 message="Scores stay editable and the public view stays up, but no new games can start."
                 confirmLabel="End session"
                 danger
-                className="rounded-md border border-clay px-3 py-2 text-sm font-medium text-clay hover:bg-[#f9e9df]"
+                className="rounded-md border border-clay px-3 py-2 text-sm font-medium text-clay hover:bg-clay-tint"
               >
                 End session
               </ConfirmSubmit>
@@ -330,7 +331,7 @@ export default async function SessionPage({
                 message="All its players, games, and scores are permanently removed, and its spectator link stops working."
                 confirmLabel="Delete forever"
                 danger
-                className="rounded-md border border-[#e3c4b0] px-3 py-2 text-sm font-medium text-clay-deep hover:bg-[#f9e9df]"
+                className="rounded-md border border-clay-soft px-3 py-2 text-sm font-medium text-clay-deep hover:bg-clay-tint"
               >
                 Delete
               </ConfirmSubmit>
@@ -357,7 +358,7 @@ export default async function SessionPage({
       {session.defaultMode !== "ladder" &&
         shortfall.length > 0 &&
         queue.length + playing.length + completed.length > 0 && (
-        <div className="mb-4 rounded-md border border-[#e3c4b0] bg-[#f9e9df] p-3 text-sm text-ink">
+        <div className="mb-4 rounded-md border border-clay-soft bg-clay-tint p-3 text-sm text-ink">
           <strong className="font-semibold">Best effort:</strong>{" "}
           {shortfall
             .map((s) => `${s.name} gets ${s.scheduled} of ${session.gameCap}`)
@@ -413,34 +414,20 @@ export default async function SessionPage({
                   key={court}
                   className="rounded-md border border-line bg-card p-4 shadow-[0_1px_0_#d9d2c2]"
                 >
-                  <div className="flex items-baseline justify-between border-b border-rule pb-2">
-                    <span className="text-xs font-bold uppercase tracking-[0.16em] text-clay">
-                      {courtName(court)}
-                      {g.round !== null && (
-                        <span className="ml-2 rounded-full border border-[#d89a7c] bg-[#f9e9df] px-2 py-0.5 tracking-[0.12em]">
-                          {label(g)}
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-xs text-muted">
-                      No. {g.seq}
-                      {g.startedAt && (
-                        <>
-                          {" · "}
-                          <span className="font-semibold text-clay">
-                            <RunningClock since={g.startedAt.toISOString()} />
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  </div>
+                  <PlayingCardHeader
+                    court={court}
+                    seq={g.seq}
+                    startedAt={g.startedAt?.toISOString() ?? null}
+                    label={label(g)}
+                    stage={g.stage}
+                  />
                   {outNames(g).length > 0 && (
                     <p className="mt-2 rounded-md border border-[#e0a0a0] bg-[#fbe9e7] px-2.5 py-1.5 text-xs font-semibold text-[#9b2c2c]">
                       Out: {outNames(g).join(", ")} - score it or delete it
                     </p>
                   )}
                   <div className="mt-2.5 flex items-center gap-3">
-                    <div className="flex-1 font-display text-xl leading-snug">
+                    <div className="min-w-0 flex-1 wrap-break-word hyphens-auto font-display text-xl leading-snug">
                       <PlayerName id={g.t1p1} byId={byId} overCap={overCap(g).has(g.t1p1)} />
                       <br />
                       <PlayerName id={g.t1p2} byId={byId} overCap={overCap(g).has(g.t1p2)} />
@@ -448,7 +435,7 @@ export default async function SessionPage({
                     <div className="font-serif text-xs italic tracking-wide text-muted">
                       versus
                     </div>
-                    <div className="flex-1 text-right font-display text-xl leading-snug">
+                    <div className="min-w-0 flex-1 wrap-break-word hyphens-auto text-right font-display text-xl leading-snug">
                       <PlayerName id={g.t2p1} byId={byId} overCap={overCap(g).has(g.t2p1)} />
                       <br />
                       <PlayerName id={g.t2p2} byId={byId} overCap={overCap(g).has(g.t2p2)} />
@@ -580,7 +567,7 @@ export default async function SessionPage({
                     : `Seeds the bracket from the standings - the top ${session.maleSlots} men and top ${session.femaleSlots} women qualify. Same-gender knockout first if one gender has more, then mixed MF rounds.`
                 }
                 confirmLabel={bracketStarted ? "Advance round" : "Start playoffs"}
-                className="rounded-md border-2 border-clay bg-card px-4 py-2 text-sm font-semibold text-clay-deep hover:bg-[#f9e9df]"
+                className="rounded-md border-2 border-clay bg-card px-4 py-2 text-sm font-semibold text-clay-deep hover:bg-clay-tint"
               >
                 {bracketStarted ? "Advance round" : "Start playoffs"}
               </ConfirmSubmit>
@@ -642,7 +629,7 @@ export default async function SessionPage({
                     : ready
                       ? "border-ink bg-[#eef2e4]"
                       : blockers
-                        ? "border-[#d89a7c] bg-[#f9e9df]"
+                        ? "border-clay-line bg-clay-tint"
                         : "border-line bg-card"
                 }`}
               >
@@ -663,23 +650,20 @@ export default async function SessionPage({
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm">
+                    {g.round !== null && (
+                      <BracketChip
+                        block
+                        label={label(g)!}
+                        stage={g.stage}
+                        className="mb-1.5"
+                      />
+                    )}
                     <GameNo seq={g.seq} />
                     <span className={ready || idx === 0 ? "font-semibold" : ""}>
                       <TeamNames g={g} byId={byId} team={1} sep="/" overCap={overCap(g)} />{" "}
                       <span className="font-serif italic text-faint">vs</span>{" "}
                       <TeamNames g={g} byId={byId} team={2} sep="/" overCap={overCap(g)} />
                     </span>
-                    {g.round !== null && (
-                      <span
-                        className={`ml-2 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
-                          g.stage !== null
-                            ? "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
-                            : "border-line bg-paper text-muted"
-                        }`}
-                      >
-                        {label(g)}
-                      </span>
-                    )}
                     {g.pinned && (
                       <span className="ml-2 rounded-full border border-line bg-paper px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-muted">
                         pinned
@@ -735,7 +719,7 @@ export default async function SessionPage({
                           message="It comes off the queue permanently."
                           confirmLabel="Delete"
                           danger
-                          className="flex items-center justify-center rounded-md border border-[#e3c4b0] p-1.5 text-clay-deep hover:bg-[#f9e9df]"
+                          className="flex items-center justify-center rounded-md border border-clay-soft p-1.5 text-clay-deep hover:bg-clay-tint"
                         >
                           <svg
                             width="14"
@@ -851,7 +835,7 @@ export default async function SessionPage({
                             message="Their un-started games are deleted (regenerate the queue after); played stats stay."
                             confirmLabel="Remove"
                             danger
-                            className="flex items-center justify-center rounded-md border border-[#e3c4b0] p-2 text-clay-deep hover:bg-[#f9e9df]"
+                            className="flex items-center justify-center rounded-md border border-clay-soft p-2 text-clay-deep hover:bg-clay-tint"
                           >
                             <svg
                               width="15"
@@ -946,18 +930,10 @@ export default async function SessionPage({
                 className="rounded-md border border-line bg-card p-4 shadow-[0_1px_0_#d9d2c2]"
               >
                 <div className="flex items-center justify-between border-b border-rule pb-2">
-                  <span className="flex items-center">
+                  <span className="flex min-w-0 flex-wrap items-center gap-y-1">
                     <GameNo seq={g.seq} />
                     {g.round !== null && (
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] ${
-                          g.stage !== null
-                            ? "border-[#d89a7c] bg-[#f9e9df] font-bold text-clay"
-                            : "border-line bg-paper text-muted"
-                        }`}
-                      >
-                        {label(g)}
-                      </span>
+                      <BracketChip label={label(g)!} stage={g.stage} />
                     )}
                   </span>
                   <span className="flex items-center gap-2">
@@ -988,7 +964,7 @@ export default async function SessionPage({
                         message="Its result is permanently removed from the leaderboard and every player's record."
                         confirmLabel="Delete"
                         danger
-                        className="flex items-center justify-center rounded-md border border-[#e3c4b0] p-1.5 text-clay-deep hover:bg-[#f9e9df]"
+                        className="flex items-center justify-center rounded-md border border-clay-soft p-1.5 text-clay-deep hover:bg-clay-tint"
                       >
                         <svg
                           width="14"

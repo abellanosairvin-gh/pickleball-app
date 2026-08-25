@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   integer,
@@ -5,6 +6,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const sessions = pgTable("sessions", {
@@ -72,7 +74,14 @@ export const games = pgTable("games", {
   stage: text("stage", { enum: ["final", "bronze"] }),
   startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
-});
+}, (t) => [
+  // One game on a court at a time. startGame's free-court pick is a
+  // read-then-write on a driver without transactions; this is the guard
+  // that makes two concurrent starts unable to share a court.
+  uniqueIndex("games_one_playing_per_court")
+    .on(t.sessionId, t.court)
+    .where(sql`${t.status} = 'playing'`),
+]);
 
 export type Session = typeof sessions.$inferSelect;
 export type Player = typeof players.$inferSelect;

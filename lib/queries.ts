@@ -20,6 +20,8 @@ export type GameView = {
   pinned: boolean;
   startedAt: string | null;
   durationMs: number | null;
+  /** Tournament bracket round (1-based); null for regular night games. */
+  round: number | null;
   /** Bracket badge: "Championship", "Battle for 3rd", or "Men battle for top 4". */
   label: string | null;
   /** Medal game (final / battle for 3rd), for emphasised badges. */
@@ -27,6 +29,9 @@ export type GameView = {
   /** Players already at the game cap whose result here didn't count. */
   uncounted: string[];
 };
+
+/** A game on court always has its court number (see startGame). */
+export type PlayingGameView = GameView & { court: number };
 
 export type LeaderboardRow = {
   playerId: number;
@@ -54,7 +59,7 @@ export type Snapshot = {
     maleSlots: number | null;
     femaleSlots: number | null;
   };
-  playing: GameView[];
+  playing: PlayingGameView[];
   queue: GameView[];
   history: GameView[];
   leaderboard: LeaderboardRow[];
@@ -205,6 +210,7 @@ function toGameView(
     pinned: g.pinned,
     startedAt: g.startedAt?.toISOString() ?? null,
     durationMs,
+    round: g.round,
     label: bracketLabel(g, allGames, byId),
     stage: g.stage,
     uncounted,
@@ -236,7 +242,12 @@ export function buildSnapshot(
       maleSlots: session.maleSlots,
       femaleSlots: session.femaleSlots,
     },
-    playing: allGames.filter((g) => g.status === "playing").map(view),
+    playing: allGames
+      .filter(
+        (g): g is Game & { court: number } =>
+          g.status === "playing" && g.court !== null,
+      )
+      .map((g) => ({ ...view(g), court: g.court })),
     queue: allGames.filter((g) => g.status === "queued").map(view),
     history: allGames
       .filter((g) => g.status === "completed")

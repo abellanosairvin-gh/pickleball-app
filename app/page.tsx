@@ -97,7 +97,7 @@ export default async function DashboardPage() {
                     message="All its players, games, and scores are permanently removed, and its spectator link stops working."
                     confirmLabel="Delete forever"
                     danger
-                    className="rounded-md border border-[#e3c4b0] px-2.5 py-1.5 text-xs text-clay-deep hover:bg-[#f9e9df]"
+                    className="rounded-md border border-clay-soft px-2.5 py-1.5 text-xs text-clay-deep hover:bg-clay-tint"
                   >
                     Delete
                   </ConfirmSubmit>

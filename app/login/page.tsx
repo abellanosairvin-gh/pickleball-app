@@ -20,7 +20,7 @@ export default async function LoginPage({
         Organizer sign-in
       </p>
       {error && (
-        <p className="mb-4 rounded-md border border-[#e3c4b0] bg-[#f9e9df] p-3 text-sm text-clay-deep">
+        <p className="mb-4 rounded-md border border-clay-soft bg-clay-tint p-3 text-sm text-clay-deep">
           Wrong username or password.
         </p>
       )}

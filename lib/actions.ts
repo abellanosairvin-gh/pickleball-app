@@ -1,6 +1,7 @@
 "use server";
 
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, notExists, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
@@ -530,25 +531,59 @@ export async function startGame(formData: FormData) {
       and(eq(games.sessionId, sessionId), eq(games.status, "playing")),
     );
   const used = new Set(inUse.map((g) => g.court));
-  let court = 0;
-  for (let c = 1; c <= session.courtCount; c++) {
-    if (!used.has(c)) {
-      court = c;
-      break;
+  // The free-court pick above is a snapshot; another start may land on the
+  // same court before our UPDATE. So the UPDATE itself re-checks that the
+  // court is still free, and the partial unique index (schema.ts) rejects
+  // the loser of a true tie - either way we move on to the next court.
+  const occupied = alias(games, "occupied");
+  for (let court = 1; court <= session.courtCount; court++) {
+    if (used.has(court)) continue;
+    try {
+      const started = await db
+        .update(games)
+        .set({ status: "playing", court, startedAt: new Date() })
+        .where(
+          and(
+            eq(games.id, gameId),
+            eq(games.sessionId, sessionId),
+            eq(games.status, "queued"),
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(occupied)
+                .where(
+                  and(
+                    eq(occupied.sessionId, sessionId),
+                    eq(occupied.status, "playing"),
+                    eq(occupied.court, court),
+                  ),
+                ),
+            ),
+          ),
+        )
+        .returning({ id: games.id });
+      if (started.length > 0) break;
+      // Nothing updated: the court was taken meanwhile (try the next one)
+      // or the game is no longer queued (someone else started it - stop).
+      const [game] = await db
+        .select({ status: games.status })
+        .from(games)
+        .where(eq(games.id, gameId));
+      if (game?.status !== "queued") break;
+    } catch (e) {
+      if (!isUniqueViolation(e)) throw e;
     }
   }
-  if (court === 0) return; // every court occupied
-  await db
-    .update(games)
-    .set({ status: "playing", court, startedAt: new Date() })
-    .where(
-      and(
-        eq(games.id, gameId),
-        eq(games.sessionId, sessionId),
-        eq(games.status, "queued"),
-      ),
-    );
   revalidate(sessionId);
+}
+
+/** Postgres unique_violation (23505), as surfaced by the neon driver. */
+function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    (e as { code?: unknown }).code === "23505"
+  );
 }
 
 /** Records (or edits) a final score. Completing a playing game frees its court. */

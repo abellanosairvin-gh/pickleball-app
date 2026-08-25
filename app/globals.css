@@ -13,9 +13,17 @@
   --color-dash: #c9c0aa; /* dashed empty states */
   --color-clay: #b95c38; /* terracotta accent */
   --color-clay-deep: #96452a;
+  --color-clay-tint: #f9e9df; /* clay-washed fills: badges, callouts, hover */
+  --color-clay-line: #d89a7c; /* border on clay-tinted badges */
+  --color-clay-soft: #e3c4b0; /* border on clay-tinted callouts/buttons */
   --color-win: #2e7d3e; /* winners in results */
   --color-loss: #b3312b; /* losers in results */
+}
 
+/* next/font sets --font-dm-serif / --font-public-sans on <body>, which a
+   plain @theme (compiled onto :root) cannot see - `inline` makes the
+   utilities emit the var() at the element that uses them instead. */
+@theme inline {
   --font-display: var(--font-dm-serif), Georgia, serif;
   --font-body: var(--font-public-sans), system-ui, sans-serif;
 }
