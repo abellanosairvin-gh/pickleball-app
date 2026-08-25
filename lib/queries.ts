@@ -253,7 +253,8 @@ export function buildSnapshot(
       .filter((g) => g.status === "completed")
       .sort(
         (a, b) =>
-          (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0),
+          (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0) ||
+          b.seq - a.seq,
       )
       .map(view),
     leaderboard,

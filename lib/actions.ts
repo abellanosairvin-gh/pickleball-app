@@ -454,12 +454,15 @@ export async function simulateScores(formData: FormData) {
       ),
     )
     .orderBy(asc(games.seq));
+  // Fake completions a second apart in seq order, ending at "now" - never
+  // in the future, so a game finished right after a simulate still sorts
+  // above them in Completed.
   const base = Date.now();
   for (const [i, g] of open.entries()) {
     const target = g.round !== null ? 15 : 11;
     const t1Wins = Math.random() < 0.5;
     const loser = Math.floor(Math.random() * target);
-    const completedAt = new Date(base + i * 1000);
+    const completedAt = new Date(base - (open.length - 1 - i) * 1000);
     const startedAt =
       g.startedAt ??
       new Date(completedAt.getTime() - (8 + Math.floor(Math.random() * 8)) * 60000);

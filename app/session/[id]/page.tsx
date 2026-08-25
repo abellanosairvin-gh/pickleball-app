@@ -144,7 +144,9 @@ export default async function SessionPage({
   const completed = allGames
     .filter((g) => g.status === "completed")
     .sort(
-      (a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0),
+      (a, b) =>
+        (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0) ||
+        b.seq - a.seq,
     );
   // Which players are past their Game Cap in each open game: walk the
   // night in play order (completed, on court, then the queue) counting
