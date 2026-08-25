@@ -8,6 +8,7 @@ import { FixedGamePopup } from "@/components/FixedGamePopup";
 import { GameEditPopup } from "@/components/GameEditPopup";
 import { OrganizerTabs } from "@/components/OrganizerTabs";
 import { BracketChip } from "@/components/BracketChip";
+import { MatchupNames } from "@/components/MatchupNames";
 import { PlayingCardHeader } from "@/components/PlayingCardHeader";
 import { PlayerEditPopup } from "@/components/PlayerEditPopup";
 import { QrPopup } from "@/components/QrPopup";
@@ -38,6 +39,7 @@ import {
   formatDuration,
   GENDER_LABEL,
   MODE_LABEL,
+  queueOrdinal,
   RATING_ABBR,
 } from "@/lib/format";
 import {
@@ -71,29 +73,6 @@ function PlayerName({
     >
       {byId.get(id)?.name ?? "?"}
     </span>
-  );
-}
-
-function TeamNames({
-  g,
-  byId,
-  team,
-  sep = " & ",
-  overCap,
-}: {
-  g: Game;
-  byId: Map<number, Player>;
-  team: 1 | 2;
-  sep?: string;
-  overCap: Set<number>;
-}) {
-  const ids = team === 1 ? [g.t1p1, g.t1p2] : [g.t2p1, g.t2p2];
-  return (
-    <>
-      <PlayerName id={ids[0]} byId={byId} overCap={overCap.has(ids[0])} />
-      {sep}
-      <PlayerName id={ids[1]} byId={byId} overCap={overCap.has(ids[1])} />
-    </>
   );
 }
 
@@ -426,21 +405,17 @@ export default async function SessionPage({
                       Out: {outNames(g).join(", ")} - score it or delete it
                     </p>
                   )}
-                  <div className="mt-2.5 flex items-center gap-3">
-                    <div className="min-w-0 flex-1 wrap-break-word hyphens-auto font-display text-xl leading-snug">
-                      <PlayerName id={g.t1p1} byId={byId} overCap={overCap(g).has(g.t1p1)} />
-                      <br />
-                      <PlayerName id={g.t1p2} byId={byId} overCap={overCap(g).has(g.t1p2)} />
-                    </div>
-                    <div className="font-serif text-xs italic tracking-wide text-muted">
-                      versus
-                    </div>
-                    <div className="min-w-0 flex-1 wrap-break-word hyphens-auto text-right font-display text-xl leading-snug">
-                      <PlayerName id={g.t2p1} byId={byId} overCap={overCap(g).has(g.t2p1)} />
-                      <br />
-                      <PlayerName id={g.t2p2} byId={byId} overCap={overCap(g).has(g.t2p2)} />
-                    </div>
-                  </div>
+                  <MatchupNames
+                    className="mt-2.5"
+                    team1={[
+                      <PlayerName key={g.t1p1} id={g.t1p1} byId={byId} overCap={overCap(g).has(g.t1p1)} />,
+                      <PlayerName key={g.t1p2} id={g.t1p2} byId={byId} overCap={overCap(g).has(g.t1p2)} />,
+                    ]}
+                    team2={[
+                      <PlayerName key={g.t2p1} id={g.t2p1} byId={byId} overCap={overCap(g).has(g.t2p1)} />,
+                      <PlayerName key={g.t2p2} id={g.t2p2} byId={byId} overCap={overCap(g).has(g.t2p2)} />,
+                    ]}
+                  />
                   <ScoreForm
                     action={submitScore}
                     className="mt-3 border-t border-rule pt-3"
@@ -615,63 +590,92 @@ export default async function SessionPage({
             No games queued.
           </p>
         ) : (
-          <ol className="space-y-2">
+          <ol className="space-y-3.5">
             {queue.map((g, idx) => {
               const ready = readyGames.has(g.id);
               const blockers = blockedGames.get(g.id);
               const outHere = outNames(g);
+              // Card tone: an Out player (red) and an open court (green)
+              // outrank position; otherwise the next game up sits on
+              // clay-tinted paper like the spectator's queue.
+              const tone =
+                outHere.length > 0
+                  ? "border-[#c94f4f] bg-[#fbe9e7]"
+                  : ready
+                    ? "border-ink bg-[#eef2e4]"
+                    : idx === 0
+                      ? "border-clay-line bg-clay-tint"
+                      : "border-line bg-card";
+              const rule =
+                outHere.length > 0
+                  ? "border-[#e0a0a0]"
+                  : ready
+                    ? "border-ink/20"
+                    : idx === 0
+                      ? "border-clay-line"
+                      : "border-rule";
               return (
               <li
                 key={g.id}
-                className={`rounded-md border p-3 shadow-[0_1px_0_#d9d2c2] ${
-                  outHere.length > 0
-                    ? "border-[#c94f4f] bg-[#fbe9e7]"
-                    : ready
-                      ? "border-ink bg-[#eef2e4]"
-                      : blockers
-                        ? "border-clay-line bg-clay-tint"
-                        : "border-line bg-card"
-                }`}
+                className={`rounded-md border p-4 shadow-[0_1px_0_#d9d2c2] ${tone}`}
               >
+                <div className={`flex items-baseline justify-between gap-3 border-b pb-2 ${rule}`}>
+                  <span
+                    className={`text-xs font-bold uppercase tracking-[0.16em] ${
+                      idx === 0 ? "text-clay" : "text-muted"
+                    }`}
+                  >
+                    {queueOrdinal(idx)}
+                  </span>
+                  <span
+                    className={`flex items-center gap-2 whitespace-nowrap text-xs ${
+                      idx === 0 ? "text-clay-deep" : "text-muted"
+                    }`}
+                  >
+                    {g.pinned && (
+                      <span className="rounded-full border border-line bg-paper px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-muted">
+                        pinned
+                      </span>
+                    )}
+                    No. {g.seq}
+                  </span>
+                </div>
                 {outHere.length > 0 && (
-                  <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-[#9b2c2c]">
+                  <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-[#9b2c2c]">
                     Out: {outHere.join(", ")}
                   </p>
                 )}
                 {ready && outHere.length === 0 && (
-                  <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-ink">
+                  <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-ink">
                     Ready - court open
                   </p>
                 )}
                 {blockers && (
-                  <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-clay-deep">
+                  <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-clay-deep">
                     Waiting on {blockers.join(", ")}
                   </p>
                 )}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-sm">
-                    {g.round !== null && (
-                      <BracketChip
-                        block
-                        label={label(g)!}
-                        stage={g.stage}
-                        className="mb-1.5"
-                      />
-                    )}
-                    <GameNo seq={g.seq} />
-                    <span className={ready || idx === 0 ? "font-semibold" : ""}>
-                      <TeamNames g={g} byId={byId} team={1} sep="/" overCap={overCap(g)} />{" "}
-                      <span className="font-serif italic text-faint">vs</span>{" "}
-                      <TeamNames g={g} byId={byId} team={2} sep="/" overCap={overCap(g)} />
-                    </span>
-                    {g.pinned && (
-                      <span className="ml-2 rounded-full border border-line bg-paper px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-muted">
-                        pinned
-                      </span>
-                    )}
-                  </div>
-                  {!ended && (
-                    <div className="flex items-center gap-1">
+                {g.round !== null && (
+                  <BracketChip
+                    block
+                    label={label(g)!}
+                    stage={g.stage}
+                    className="mt-2"
+                  />
+                )}
+                <MatchupNames
+                  className="mt-2.5"
+                  team1={[
+                    <PlayerName key={g.t1p1} id={g.t1p1} byId={byId} overCap={overCap(g).has(g.t1p1)} />,
+                    <PlayerName key={g.t1p2} id={g.t1p2} byId={byId} overCap={overCap(g).has(g.t1p2)} />,
+                  ]}
+                  team2={[
+                    <PlayerName key={g.t2p1} id={g.t2p1} byId={byId} overCap={overCap(g).has(g.t2p1)} />,
+                    <PlayerName key={g.t2p2} id={g.t2p2} byId={byId} overCap={overCap(g).has(g.t2p2)} />,
+                  ]}
+                />
+                {!ended && (
+                  <div className={`mt-3 flex items-center justify-end gap-1 border-t pt-3 ${rule}`}>
                       {freeCourts.length > 0 && (
                         <form action={startGame}>
                           <input type="hidden" name="sessionId" value={session.id} />
@@ -740,9 +744,8 @@ export default async function SessionPage({
                           </svg>
                         </ConfirmSubmit>
                       </form>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </li>
               );
             })}

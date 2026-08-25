@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatDuration } from "@/lib/format";
+import { formatDuration, queueOrdinal } from "@/lib/format";
 import { BracketChip } from "./BracketChip";
 import { ChampionshipLadder } from "./ChampionshipLadder";
 import { LeaderboardTable } from "./LeaderboardTable";
+import { MatchupNames } from "./MatchupNames";
 import { PlayingCardHeader } from "./PlayingCardHeader";
 import type { GameView, Snapshot } from "@/lib/queries";
 
@@ -40,42 +41,14 @@ function Team({
   );
 }
 
-/** Two serif name columns with "versus" between - the Playing and Queue cards. */
 function Matchup({ g }: { g: GameView }) {
   return (
-    <div className="mt-2.5 flex items-center gap-3">
-      <div className="min-w-0 flex-1 wrap-break-word hyphens-auto font-display text-xl leading-snug">
-        {g.team1.names[0]}
-        <br />
-        {g.team1.names[1]}
-      </div>
-      <div className="font-serif text-xs italic tracking-wide text-muted">
-        versus
-      </div>
-      <div className="min-w-0 flex-1 wrap-break-word hyphens-auto text-right font-display text-xl leading-snug">
-        {g.team2.names[0]}
-        <br />
-        {g.team2.names[1]}
-      </div>
-    </div>
+    <MatchupNames
+      className="mt-2.5"
+      team1={g.team1.names}
+      team2={g.team2.names}
+    />
   );
-}
-
-/** "Up next", then "2nd up", "3rd up", "11th up", "21st up"... */
-function queueOrdinal(i: number): string {
-  if (i === 0) return "Up next";
-  const n = i + 1;
-  const suffix =
-    n % 100 >= 11 && n % 100 <= 13
-      ? "th"
-      : n % 10 === 1
-        ? "st"
-        : n % 10 === 2
-          ? "nd"
-          : n % 10 === 3
-            ? "rd"
-            : "th";
-  return `${n}${suffix} up`;
 }
 
 function GameNo({ seq }: { seq: number }) {

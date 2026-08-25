@@ -41,6 +41,23 @@ export function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
+/** Queue position label: "Up next", then "2nd up", "3rd up", "11th up", "21st up"... */
+export function queueOrdinal(index: number): string {
+  if (index === 0) return "Up next";
+  const n = index + 1;
+  const suffix =
+    n % 100 >= 11 && n % 100 <= 13
+      ? "th"
+      : n % 10 === 1
+        ? "st"
+        : n % 10 === 2
+          ? "nd"
+          : n % 10 === 3
+            ? "rd"
+            : "th";
+  return `${n}${suffix} up`;
+}
+
 /** Display names for matchup modes ("fixed" is shown as Manual). */
 export const MODE_LABEL: Record<string, string> = {
   random: "Random · Fair Rotation",
