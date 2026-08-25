@@ -6,6 +6,7 @@ import { BracketChip } from "./BracketChip";
 import { ChampionshipLadder } from "./ChampionshipLadder";
 import { LeaderboardTable } from "./LeaderboardTable";
 import { MatchupNames } from "./MatchupNames";
+import { PlayerLabel } from "./PlayerLabel";
 import { PlayingCardHeader } from "./PlayingCardHeader";
 import type { GameView, Snapshot } from "@/lib/queries";
 
@@ -34,9 +35,9 @@ function Team({
         : "text-loss";
   return (
     <span className={`${tone} ${className ?? ""}`.trim()}>
-      {names[0]}
+      <PlayerLabel name={names[0]} />
       {sep}
-      {names[1]}
+      <PlayerLabel name={names[1]} />
     </span>
   );
 }
@@ -45,8 +46,14 @@ function Matchup({ g }: { g: GameView }) {
   return (
     <MatchupNames
       className="mt-2.5"
-      team1={g.team1.names}
-      team2={g.team2.names}
+      team1={[
+        <PlayerLabel key="a" name={g.team1.names[0]} />,
+        <PlayerLabel key="b" name={g.team1.names[1]} />,
+      ]}
+      team2={[
+        <PlayerLabel key="a" name={g.team2.names[0]} />,
+        <PlayerLabel key="b" name={g.team2.names[1]} />,
+      ]}
     />
   );
 }

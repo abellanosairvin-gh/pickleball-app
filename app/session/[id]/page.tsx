@@ -11,6 +11,7 @@ import { BracketChip } from "@/components/BracketChip";
 import { MatchupNames } from "@/components/MatchupNames";
 import { PlayingCardHeader } from "@/components/PlayingCardHeader";
 import { PlayerEditPopup } from "@/components/PlayerEditPopup";
+import { PlayerLabel } from "@/components/PlayerLabel";
 import { QrPopup } from "@/components/QrPopup";
 import { ScoreEditPopup } from "@/components/ScoreEditPopup";
 import { ScoreForm } from "@/components/ScoreForm";
@@ -71,7 +72,7 @@ function PlayerName({
       className={overCap ? "text-[#d97706]" : undefined}
       title={overCap ? "Past the game cap - this game won't count for them" : undefined}
     >
-      {byId.get(id)?.name ?? "?"}
+      <PlayerLabel name={byId.get(id)?.name ?? "?"} />
     </span>
   );
 }
@@ -781,7 +782,7 @@ export default async function SessionPage({
                   <span
                     className={`text-sm font-medium ${p.out ? "text-muted line-through decoration-[#c94f4f]" : ""}`}
                   >
-                    {p.name}{" "}
+                    <PlayerLabel name={p.name} />{" "}
                     <span className="text-xs text-faint">
                       {GENDER_LABEL[p.gender]} ({RATING_ABBR[p.rating]})
                     </span>
@@ -998,9 +999,9 @@ export default async function SessionPage({
                       t1Won ? "text-win" : "text-loss"
                     }`}
                   >
-                    {byId.get(g.t1p1)?.name ?? "?"}
+                    <PlayerLabel name={byId.get(g.t1p1)?.name ?? "?"} />
                     <br />
-                    {byId.get(g.t1p2)?.name ?? "?"}
+                    <PlayerLabel name={byId.get(g.t1p2)?.name ?? "?"} />
                   </div>
                   <div className="font-display text-2xl tabular-nums">
                     {g.score1}–{g.score2}
@@ -1010,9 +1011,9 @@ export default async function SessionPage({
                       t1Won ? "text-loss" : "text-win"
                     }`}
                   >
-                    {byId.get(g.t2p1)?.name ?? "?"}
+                    <PlayerLabel name={byId.get(g.t2p1)?.name ?? "?"} />
                     <br />
-                    {byId.get(g.t2p2)?.name ?? "?"}
+                    <PlayerLabel name={byId.get(g.t2p2)?.name ?? "?"} />
                   </div>
                 </div>
                 {(uncounted.get(g.id)?.length ?? 0) > 0 && (

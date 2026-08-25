@@ -1,4 +1,5 @@
 import type { PodiumEntry } from "@/lib/tournament";
+import { PlayerLabel } from "./PlayerLabel";
 
 const MEDALS = [
   { name: "Gold", fill: "#e3b341", rim: "#b8891e", ribbon: "#c2410c" },
@@ -59,7 +60,7 @@ export function ChampionshipLadder({ podium }: { podium: PodiumEntry[] }) {
               {e.title}
             </span>
             <span className="text-right text-sm font-medium">
-              {e.names[0]} &amp; {e.names[1]}
+              <PlayerLabel name={e.names[0]} /> &amp; <PlayerLabel name={e.names[1]} />
             </span>
           </li>
         ))}

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import type { LeaderboardRow } from "@/lib/queries";
+import { PlayerLabel } from "./PlayerLabel";
 
 /**
  * Standings table shared by the organizer console and the spectator view.
@@ -39,7 +40,7 @@ export function LeaderboardTable({
                 >
                   <td className="p-2.5 font-medium">
                     <span className="mr-1.5 text-faint">{i + 1}.</span>
-                    {r.name}
+                    <PlayerLabel name={r.name} />
                     {r.out && (
                       <span className="ml-2 rounded-full border border-[#c94f4f] bg-[#fbe9e7] px-1.5 py-px align-middle text-[9px] font-bold uppercase tracking-[0.12em] text-[#9b2c2c]">
                         Out
