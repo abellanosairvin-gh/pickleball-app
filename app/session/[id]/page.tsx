@@ -384,14 +384,14 @@ export default async function SessionPage({
         ))}
       <section className="mb-6">
         <SectionTitle>Courts</SectionTitle>
-        <div className="grid gap-3">
+        <div className="grid gap-2.5">
           {Array.from({ length: session.courtCount }, (_, i) => i + 1).map(
             (court) => {
               const g = playing.find((x) => x.court === court);
               return g ? (
                 <div
                   key={court}
-                  className="rounded-md border border-line bg-card p-4 shadow-[0_1px_0_#d9d2c2]"
+                  className="rounded-md border border-line bg-card p-3 shadow-[0_1px_0_#d9d2c2]"
                 >
                   <PlayingCardHeader
                     court={court}
@@ -405,26 +405,17 @@ export default async function SessionPage({
                       Out: {outNames(g).join(", ")} - score it or delete it
                     </p>
                   )}
-                  <MatchupNames
-                    className="mt-2.5"
-                    team1={[
-                      <PlayerName key={g.t1p1} id={g.t1p1} byId={byId} overCap={overCap(g).has(g.t1p1)} />,
-                      <PlayerName key={g.t1p2} id={g.t1p2} byId={byId} overCap={overCap(g).has(g.t1p2)} />,
-                    ]}
-                    team2={[
-                      <PlayerName key={g.t2p1} id={g.t2p1} byId={byId} overCap={overCap(g).has(g.t2p1)} />,
-                      <PlayerName key={g.t2p2} id={g.t2p2} byId={byId} overCap={overCap(g).has(g.t2p2)} />,
-                    ]}
-                  />
-                  <ScoreForm
-                    action={submitScore}
-                    className="mt-3 border-t border-rule pt-3"
-                    winningScore={target(g)}
-                  >
+                  <ScoreForm action={submitScore} winningScore={target(g)}>
                     <input type="hidden" name="sessionId" value={session.id} />
                     <input type="hidden" name="gameId" value={g.id} />
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-1 justify-start">
+                    {/* Each side's score sits right beside its names. */}
+                    <MatchupNames
+                      className="mt-2"
+                      team1={[
+                        <PlayerName key={g.t1p1} id={g.t1p1} byId={byId} overCap={overCap(g).has(g.t1p1)} />,
+                        <PlayerName key={g.t1p2} id={g.t1p2} byId={byId} overCap={overCap(g).has(g.t1p2)} />,
+                      ]}
+                      aside1={
                         <input
                           name="score1"
                           type="number"
@@ -432,11 +423,12 @@ export default async function SessionPage({
                           max={target(g)}
                           required
                           placeholder="0"
-                          className="w-16 rounded-md border border-line bg-paper p-2 text-center tabular-nums"
+                          aria-label="Team 1 score"
+                          inputMode="numeric"
+                          className="w-16 shrink-0 rounded-md border border-line bg-paper px-1 py-1.5 text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
-                      </div>
-                      <span className="font-serif italic text-faint">–</span>
-                      <div className="flex flex-1 justify-end">
+                      }
+                      aside2={
                         <input
                           name="score2"
                           type="number"
@@ -444,10 +436,16 @@ export default async function SessionPage({
                           max={target(g)}
                           required
                           placeholder="0"
-                          className="w-16 rounded-md border border-line bg-paper p-2 text-center tabular-nums"
+                          aria-label="Team 2 score"
+                          inputMode="numeric"
+                          className="w-16 shrink-0 rounded-md border border-line bg-paper px-1 py-1.5 text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
-                      </div>
-                    </div>
+                      }
+                      team2={[
+                        <PlayerName key={g.t2p1} id={g.t2p1} byId={byId} overCap={overCap(g).has(g.t2p1)} />,
+                        <PlayerName key={g.t2p2} id={g.t2p2} byId={byId} overCap={overCap(g).has(g.t2p2)} />,
+                      ]}
+                    />
                     <button className="mt-2.5 w-full rounded-md bg-ink px-3 py-2 text-sm font-semibold text-card hover:bg-ink-deep">
                       Final
                     </button>
@@ -590,7 +588,7 @@ export default async function SessionPage({
             No games queued.
           </p>
         ) : (
-          <ol className="space-y-3.5">
+          <ol className="space-y-2.5">
             {queue.map((g, idx) => {
               const ready = readyGames.has(g.id);
               const blockers = blockedGames.get(g.id);
@@ -617,7 +615,7 @@ export default async function SessionPage({
               return (
               <li
                 key={g.id}
-                className={`rounded-md border p-4 shadow-[0_1px_0_#d9d2c2] ${tone}`}
+                className={`rounded-md border p-3 shadow-[0_1px_0_#d9d2c2] ${tone}`}
               >
                 <div className={`flex items-baseline justify-between gap-3 border-b pb-2 ${rule}`}>
                   <span
@@ -664,7 +662,7 @@ export default async function SessionPage({
                   />
                 )}
                 <MatchupNames
-                  className="mt-2.5"
+                  className="mt-2"
                   team1={[
                     <PlayerName key={g.t1p1} id={g.t1p1} byId={byId} overCap={overCap(g).has(g.t1p1)} />,
                     <PlayerName key={g.t1p2} id={g.t1p2} byId={byId} overCap={overCap(g).has(g.t1p2)} />,
@@ -675,7 +673,7 @@ export default async function SessionPage({
                   ]}
                 />
                 {!ended && (
-                  <div className={`mt-3 flex items-center justify-end gap-1 border-t pt-3 ${rule}`}>
+                  <div className={`mt-2.5 flex items-center justify-end gap-1 border-t pt-2.5 ${rule}`}>
                       {freeCourts.length > 0 && (
                         <form action={startGame}>
                           <input type="hidden" name="sessionId" value={session.id} />
