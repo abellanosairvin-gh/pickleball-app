@@ -1,0 +1,99 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "Queue card",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-1"
+    },
+    {
+      "file": "Current.dc.html",
+      "title": "Current (before)",
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-1"
+    },
+    {
+      "file": "Numbered.dc.html",
+      "title": "A \u00b7 Numbered rail",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-2"
+    },
+    {
+      "file": "Matchup.dc.html",
+      "title": "B \u00b7 Matchup",
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-2"
+    },
+    {
+      "file": "Ledger.dc.html",
+      "title": "C \u00b7 Ledger",
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "page": "page-2"
+    },
+    {
+      "file": "NameTiles.dc.html",
+      "title": "D \u00b7 Name tiles",
+      "x": 0,
+      "y": 964,
+      "w": 390,
+      "h": 844,
+      "page": "page-2"
+    },
+    {
+      "file": "UpNextHero.dc.html",
+      "title": "E \u00b7 Up-next hero",
+      "x": 470,
+      "y": 964,
+      "w": 390,
+      "h": 844,
+      "page": "page-2"
+    }
+  ],
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Queue card"
+    },
+    {
+      "id": "page-2",
+      "name": "Directions"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "final-note",
+      "x": 0,
+      "y": -110,
+      "w": 560,
+      "page": "page-1",
+      "text": "Final: direction B (Matchup) with E's up-next colouring - clay-tinted paper, clay-line border and hairline, No. in clay-deep. The before card sits beside it; the five directions are on the Directions page."
+    },
+    {
+      "id": "queue-brief",
+      "x": 0,
+      "y": -230,
+      "w": 900,
+      "page": "page-2",
+      "text": "Queue tab, spectator app - the current card beside five directions. Same four queued games in each, one of them a bracket game (Battle for 3rd) so you can see how the chip sits.\n\nA Numbered rail - big serif position number, names stacked; up-next card on clay-tinted paper. Most scannable order; tallest cards.\nB Matchup - the Playing card's anatomy reused for the queue. Consistent tab to tab; only ~4 games fit a screen.\nC Ledger - one card, hairline rows, up-next as an ink band. Densest and calmest; long names wrap and it reads less like cards.\nD Name tiles - each player is a pill; players find their own name fastest, but the pairing reads weaker as a matchup.\nE Up-next hero - one big card, the rest a compact list. Strongest hierarchy; games 2+ get small."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

@@ -40,14 +40,42 @@ function Team({
   );
 }
 
-function Vs({ g }: { g: GameView }) {
+/** Two serif name columns with "versus" between - the Playing and Queue cards. */
+function Matchup({ g }: { g: GameView }) {
   return (
-    <span>
-      <Team names={g.team1.names} sep="/" />{" "}
-      <span className="font-serif italic text-faint">vs</span>{" "}
-      <Team names={g.team2.names} sep="/" />
-    </span>
+    <div className="mt-2.5 flex items-center gap-3">
+      <div className="min-w-0 flex-1 wrap-break-word hyphens-auto font-display text-xl leading-snug">
+        {g.team1.names[0]}
+        <br />
+        {g.team1.names[1]}
+      </div>
+      <div className="font-serif text-xs italic tracking-wide text-muted">
+        versus
+      </div>
+      <div className="min-w-0 flex-1 wrap-break-word hyphens-auto text-right font-display text-xl leading-snug">
+        {g.team2.names[0]}
+        <br />
+        {g.team2.names[1]}
+      </div>
+    </div>
   );
+}
+
+/** "Up next", then "2nd up", "3rd up", "11th up", "21st up"... */
+function queueOrdinal(i: number): string {
+  if (i === 0) return "Up next";
+  const n = i + 1;
+  const suffix =
+    n % 100 >= 11 && n % 100 <= 13
+      ? "th"
+      : n % 10 === 1
+        ? "st"
+        : n % 10 === 2
+          ? "nd"
+          : n % 10 === 3
+            ? "rd"
+            : "th";
+  return `${n}${suffix} up`;
 }
 
 function GameNo({ seq }: { seq: number }) {
@@ -169,57 +197,61 @@ export function SpectatorApp({ token }: { token: string }) {
                     label={g.label}
                     stage={g.stage}
                   />
-                  <div className="mt-2.5 flex items-center gap-3">
-                    <div className="min-w-0 flex-1 wrap-break-word hyphens-auto font-display text-xl leading-snug">
-                      {g.team1.names[0]}
-                      <br />
-                      {g.team1.names[1]}
-                    </div>
-                    <div className="font-serif text-xs italic tracking-wide text-muted">
-                      versus
-                    </div>
-                    <div className="min-w-0 flex-1 wrap-break-word hyphens-auto text-right font-display text-xl leading-snug">
-                      {g.team2.names[0]}
-                      <br />
-                      {g.team2.names[1]}
-                    </div>
-                  </div>
+                  <Matchup g={g} />
                 </div>
               ))}
           </div>
         )}
 
         {tab === "Queue" && (
-          <ol className="space-y-2.5">
+          <ol className="space-y-3.5">
             {snapshot.queue.length === 0 && (
               <p className="p-6 text-center text-sm text-muted">
                 Nothing queued.
               </p>
             )}
-            {snapshot.queue.map((g, i) => (
-              <li
-                key={g.id}
-                className={`rounded-md border bg-card p-3 text-sm shadow-[0_1px_0_#d9d2c2] ${
-                  i === 0 ? "border-clay" : "border-line"
-                }`}
-              >
-                {i === 0 && (
-                  <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-clay">
-                    Up next
-                  </p>
-                )}
-                {g.label && (
-                  <BracketChip
-                    block
-                    label={g.label}
-                    stage={g.stage}
-                    className="mb-1.5"
-                  />
-                )}
-                <GameNo seq={g.seq} />
-                <Vs g={g} />
-              </li>
-            ))}
+            {snapshot.queue.map((g, i) => {
+              // The next game up sits on clay-tinted paper; the rest on card.
+              const next = i === 0;
+              return (
+                <li
+                  key={g.id}
+                  className={`rounded-md border p-4 shadow-[0_1px_0_#d9d2c2] ${
+                    next ? "border-clay-line bg-clay-tint" : "border-line bg-card"
+                  }`}
+                >
+                  <div
+                    className={`flex items-baseline justify-between gap-3 border-b pb-2 ${
+                      next ? "border-clay-line" : "border-rule"
+                    }`}
+                  >
+                    <span
+                      className={`text-xs font-bold uppercase tracking-[0.16em] ${
+                        next ? "text-clay" : "text-muted"
+                      }`}
+                    >
+                      {queueOrdinal(i)}
+                    </span>
+                    <span
+                      className={`whitespace-nowrap text-xs ${
+                        next ? "text-clay-deep" : "text-muted"
+                      }`}
+                    >
+                      No. {g.seq}
+                    </span>
+                  </div>
+                  {g.label && (
+                    <BracketChip
+                      block
+                      label={g.label}
+                      stage={g.stage}
+                      className="mt-2"
+                    />
+                  )}
+                  <Matchup g={g} />
+                </li>
+              );
+            })}
           </ol>
         )}
 
