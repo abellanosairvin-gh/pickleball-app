@@ -39,6 +39,13 @@ export async function logout() {
 
 // ---------- session ----------
 
+/** A site path ("/irene-birthday.jpg") or http(s) URL; anything else is dropped. */
+function bannerPath(v: FormDataEntryValue | null): string | null {
+  const s = String(v ?? "").trim();
+  if (!s || s.length > 500) return null;
+  return /^(\/[^\s]*|https?:\/\/[^\s]+)$/.test(s) ? s : null;
+}
+
 export async function createSession(formData: FormData) {
   await requireAuth();
   const [existing] = await db
@@ -58,6 +65,7 @@ export async function createSession(formData: FormData) {
   const femaleSlots = tournament
     ? pow2Slots(formData.get("femaleSlots"), 4)
     : null;
+  const bannerImage = bannerPath(formData.get("bannerImage"));
   const [row] = await db
     .insert(sessions)
     .values({
@@ -68,6 +76,7 @@ export async function createSession(formData: FormData) {
       tournament,
       maleSlots,
       femaleSlots,
+      bannerImage,
       publicToken: randomUUID().replace(/-/g, "").slice(0, 12),
     })
     .returning({ id: sessions.id });

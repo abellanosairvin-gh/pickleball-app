@@ -28,6 +28,8 @@ export const sessions = pgTable("sessions", {
   maleSlots: integer("male_slots"),
   femaleSlots: integer("female_slots"),
   publicToken: text("public_token").notNull().unique(),
+  /** Poster shown at the top of the spectator page: a /public path or URL. */
+  bannerImage: text("banner_image"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

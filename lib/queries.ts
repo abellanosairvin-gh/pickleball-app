@@ -58,6 +58,8 @@ export type Snapshot = {
     tournament: boolean;
     maleSlots: number | null;
     femaleSlots: number | null;
+    /** Poster at the top of the spectator page, if the session has one. */
+    bannerImage: string | null;
   };
   playing: PlayingGameView[];
   queue: GameView[];
@@ -241,6 +243,7 @@ export function buildSnapshot(
       tournament: session.tournament,
       maleSlots: session.maleSlots,
       femaleSlots: session.femaleSlots,
+      bannerImage: session.bannerImage,
     },
     playing: allGames
       .filter(

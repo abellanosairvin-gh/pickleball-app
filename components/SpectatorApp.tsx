@@ -116,6 +116,14 @@ export function SpectatorApp({ token }: { token: string }) {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col">
+      {snapshot.session.bannerImage && (
+        // eslint-disable-next-line @next/next/no-img-element -- organizer-supplied path or URL
+        <img
+          src={snapshot.session.bannerImage}
+          alt={snapshot.session.name}
+          className="block w-full"
+        />
+      )}
       <header className="border-b-2 border-ink px-5 pt-6 pb-3">
         <h1 className="font-display text-3xl leading-tight">
           {snapshot.session.name}
