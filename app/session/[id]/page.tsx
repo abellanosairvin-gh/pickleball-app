@@ -612,6 +612,16 @@ export default async function SessionPage({
                     : idx === 0
                       ? "border-clay-line"
                       : "border-rule";
+              // Status sits in the middle of the header, between the
+              // position and the game number.
+              const status =
+                outHere.length > 0
+                  ? { text: `Out: ${outHere.join(", ")}`, tone: "text-[#9b2c2c]" }
+                  : ready
+                    ? { text: "Ready - court open", tone: "text-ink" }
+                    : blockers
+                      ? { text: `Waiting on ${blockers.join(", ")}`, tone: "text-clay-deep" }
+                      : null;
               return (
               <li
                 key={g.id}
@@ -625,6 +635,13 @@ export default async function SessionPage({
                   >
                     {queueOrdinal(idx)}
                   </span>
+                  {status && (
+                    <span
+                      className={`min-w-0 flex-1 text-center text-xs font-bold uppercase tracking-[0.16em] ${status.tone}`}
+                    >
+                      {status.text}
+                    </span>
+                  )}
                   <span
                     className={`flex items-center gap-2 whitespace-nowrap text-xs ${
                       idx === 0 ? "text-clay-deep" : "text-muted"
@@ -638,21 +655,6 @@ export default async function SessionPage({
                     No. {g.seq}
                   </span>
                 </div>
-                {outHere.length > 0 && (
-                  <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-[#9b2c2c]">
-                    Out: {outHere.join(", ")}
-                  </p>
-                )}
-                {ready && outHere.length === 0 && (
-                  <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-ink">
-                    Ready - court open
-                  </p>
-                )}
-                {blockers && (
-                  <p className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-clay-deep">
-                    Waiting on {blockers.join(", ")}
-                  </p>
-                )}
                 {g.round !== null && (
                   <BracketChip
                     block
