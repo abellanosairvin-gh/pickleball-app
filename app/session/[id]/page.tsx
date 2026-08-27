@@ -26,6 +26,7 @@ import {
   moveGame,
   removePlayer,
   simulateScores,
+  setPlayerCheckedIn,
   setPlayerOut,
   startGame,
   startTournament,
@@ -117,6 +118,14 @@ export default async function SessionPage({
     [g.t1p1, g.t1p2, g.t2p1, g.t2p2]
       .filter((id) => outIds.has(id))
       .map((id) => byId.get(id)?.name ?? "?");
+  // Not checked in: hasn't arrived yet. A game can't start until all four
+  // of its players are in; when it is otherwise ready it shows red.
+  const uncheckedIds = new Set(roster.filter((p) => !p.checkedIn).map((p) => p.id));
+  const uncheckedNames = (g: Game) =>
+    [g.t1p1, g.t1p2, g.t2p1, g.t2p2]
+      .filter((id) => uncheckedIds.has(id))
+      .map((id) => byId.get(id)?.name ?? "?");
+  const checkedInCount = available.filter((p) => p.checkedIn).length;
   const snapshot = buildSnapshot(session, allPlayers, allGames);
   const isTournament = session.tournament;
   // gameId → names whose result didn't count toward the leaderboard (over
@@ -596,11 +605,15 @@ export default async function SessionPage({
               const ready = readyGames.has(g.id);
               const blockers = blockedGames.get(g.id);
               const outHere = outNames(g);
-              // Card tone: an Out player (red) and an open court (green)
-              // outrank position; otherwise the next game up sits on
-              // clay-tinted paper like the spectator's queue.
+              const uncheckedHere = uncheckedNames(g);
+              // A court is open and the players are free, but someone
+              // hasn't checked in: red instead of green, and no Start.
+              const held = ready && uncheckedHere.length > 0;
+              // Card tone: an Out player (red), a held game (red) and an
+              // open court (green) outrank position; otherwise the next
+              // game up sits on clay-tinted paper like the spectator's queue.
               const tone =
-                outHere.length > 0
+                outHere.length > 0 || held
                   ? "border-[#c94f4f] bg-[#fbe9e7]"
                   : ready
                     ? "border-ink bg-[#eef2e4]"
@@ -608,7 +621,7 @@ export default async function SessionPage({
                       ? "border-clay-line bg-clay-tint"
                       : "border-line bg-card";
               const rule =
-                outHere.length > 0
+                outHere.length > 0 || held
                   ? "border-[#e0a0a0]"
                   : ready
                     ? "border-ink/20"
@@ -620,11 +633,13 @@ export default async function SessionPage({
               const status =
                 outHere.length > 0
                   ? { text: `Out: ${outHere.join(", ")}`, tone: "text-[#9b2c2c]" }
-                  : ready
-                    ? { text: "Ready - court open", tone: "text-ink" }
-                    : blockers
-                      ? { text: `Waiting on ${blockers.join(", ")}`, tone: "text-clay-deep" }
-                      : null;
+                  : uncheckedHere.length > 0
+                    ? { text: `Not checked in: ${uncheckedHere.join(", ")}`, tone: "text-[#9b2c2c]" }
+                    : ready
+                      ? { text: "Ready - court open", tone: "text-ink" }
+                      : blockers
+                        ? { text: `Waiting on ${blockers.join(", ")}`, tone: "text-clay-deep" }
+                        : null;
               return (
               <li
                 key={g.id}
@@ -683,7 +698,15 @@ export default async function SessionPage({
                         <form action={startGame}>
                           <input type="hidden" name="sessionId" value={session.id} />
                           <input type="hidden" name="gameId" value={g.id} />
-                          <button className="rounded-md bg-ink px-2.5 py-1.5 text-xs font-semibold text-card hover:bg-ink-deep">
+                          <button
+                            disabled={uncheckedHere.length > 0}
+                            title={
+                              uncheckedHere.length > 0
+                                ? `Can't start - not checked in: ${uncheckedHere.join(", ")}`
+                                : undefined
+                            }
+                            className="rounded-md bg-ink px-2.5 py-1.5 text-xs font-semibold text-card hover:bg-ink-deep disabled:bg-[#c94f4f] disabled:opacity-60"
+                          >
                             Start
                           </button>
                         </form>
@@ -762,8 +785,8 @@ export default async function SessionPage({
         <SectionTitle>
           Roster{" "}
           <span className="text-sm text-muted">
-            ({available.length}
-            {outIds.size > 0 ? ` playing · ${outIds.size} out` : ""})
+            ({checkedInCount}/{available.length} checked in
+            {outIds.size > 0 ? ` · ${outIds.size} out` : ""})
           </span>
           {isTournament && (
             <span className="ml-2 align-middle text-xs font-sans text-muted">
@@ -804,6 +827,33 @@ export default async function SessionPage({
                     )}
                     {!ended && (
                       <>
+                        {!p.out && (
+                          <form action={setPlayerCheckedIn}>
+                            <input type="hidden" name="sessionId" value={session.id} />
+                            <input type="hidden" name="playerId" value={p.id} />
+                            <input
+                              type="hidden"
+                              name="checkedIn"
+                              value={p.checkedIn ? "0" : "1"}
+                            />
+                            {p.checkedIn ? (
+                              <button
+                                title="Checked in - tap to undo"
+                                aria-label={`Undo check-in for ${p.name}`}
+                                className="rounded-md border border-win bg-[#eef2e4] px-2 py-1.5 text-xs font-semibold text-win hover:bg-paper"
+                              >
+                                ✓ In
+                              </button>
+                            ) : (
+                              <button
+                                aria-label={`Check in ${p.name}`}
+                                className="rounded-md bg-ink px-2 py-1.5 text-xs font-semibold text-card hover:bg-ink-deep"
+                              >
+                                Check in
+                              </button>
+                            )}
+                          </form>
+                        )}
                         <form action={setPlayerOut}>
                           <input type="hidden" name="sessionId" value={session.id} />
                           <input type="hidden" name="playerId" value={p.id} />

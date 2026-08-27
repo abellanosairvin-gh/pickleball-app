@@ -50,6 +50,12 @@ export const players = pgTable("players", {
    * games are flagged for the organizer to clear and top up.
    */
   out: boolean("out").notNull().default(false),
+  /**
+   * Checked in: the player has arrived and can play. Off until the
+   * organizer checks them in from the roster; a queued game can't start
+   * until all four of its players are checked in.
+   */
+  checkedIn: boolean("checked_in").notNull().default(false),
 });
 
 export const games = pgTable("games", {

@@ -20,6 +20,10 @@ _Avoid_: User, member
 A Player tag meaning "done for the night" (injury, early leave) without leaving the roster: no new Games are generated for them, they skip the tournament playoffs, but their played results stay on the Leaderboard. Reversible. Their queued Games are flagged for the Organizer to clear, then top up.
 _Avoid_: Injured, inactive, removed
 
+**Checked in**:
+A Player tag meaning they have arrived and can play tonight. Off by default; the Organizer sets it from the roster. A Game can't start until all four of its Players are checked in - when it is up next with a Court open, it shows red instead of ready. Organizer-only: the Spectator View never shows it.
+_Avoid_: Present, arrived, attendance
+
 **Rating**:
 A Player's self-declared skill tier: Beginner, Mid, or Advanced. Beginner and Advanced may never appear in the same Game in any role; Mid may play with anyone.
 _Avoid_: Level, skill, rank

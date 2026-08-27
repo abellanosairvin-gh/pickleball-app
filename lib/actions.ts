@@ -175,6 +175,22 @@ export async function setPlayerOut(formData: FormData) {
   revalidate(sessionId);
 }
 
+/**
+ * Checks a player in (they have arrived and can play) or back out. Only
+ * fully checked-in games can start - see startGame.
+ */
+export async function setPlayerCheckedIn(formData: FormData) {
+  await requireAuth();
+  const id = Number(formData.get("playerId"));
+  const sessionId = Number(formData.get("sessionId"));
+  const checkedIn = formData.get("checkedIn") === "1";
+  await db
+    .update(players)
+    .set({ checkedIn })
+    .where(and(eq(players.id, id), eq(players.sessionId, sessionId)));
+  revalidate(sessionId);
+}
+
 /** Which players are out for the night; their games are what we clear/flag. */
 async function outPlayerIds(sessionId: number): Promise<number[]> {
   const rows = await db
@@ -526,7 +542,10 @@ export async function moveGame(formData: FormData) {
 
 // ---------- play ----------
 
-/** Starts a queued game on the lowest-numbered free court. */
+/**
+ * Starts a queued game on the lowest-numbered free court. Refuses while any
+ * of its four players is not checked in (the queue shows such a game red).
+ */
 export async function startGame(formData: FormData) {
   await requireAuth();
   const sessionId = Number(formData.get("sessionId"));
@@ -536,6 +555,16 @@ export async function startGame(formData: FormData) {
     .from(sessions)
     .where(eq(sessions.id, sessionId));
   if (!session || session.status !== "active") return;
+  const [game] = await db
+    .select()
+    .from(games)
+    .where(and(eq(games.id, gameId), eq(games.sessionId, sessionId)));
+  if (!game || game.status !== "queued") return;
+  const seated = await db
+    .select({ checkedIn: players.checkedIn })
+    .from(players)
+    .where(inArray(players.id, [game.t1p1, game.t1p2, game.t2p1, game.t2p2]));
+  if (seated.some((p) => !p.checkedIn)) return;
   const inUse = await db
     .select({ court: games.court })
     .from(games)
