@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 
 /** The event's running order, shown to spectators. */
 const PROGRAM: { title: string; time: string; note?: string }[] = [
-  { title: "Prayer", time: "4:00 PM" },
+  { title: "Prayer", time: "4:10 PM" },
   { title: "Warmup", time: "4:15 PM" },
   {
     title: "Open Play",
