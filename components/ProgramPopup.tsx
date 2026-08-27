@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 /** The event's running order, shown to spectators. */
-const PROGRAM = [
+const PROGRAM: { title: string; time: string; note?: string }[] = [
   { title: "Prayer", time: "4:00 PM" },
   { title: "Warmup", time: "4:15 PM" },
-  { title: "Open Play", time: "4:30 PM" },
+  {
+    title: "Open Play",
+    time: "4:30 PM",
+    note: "Standings seed the tournament bracket",
+  },
   { title: "Tournament", time: "7:45 PM" },
 ];
 
@@ -62,11 +66,18 @@ export function ProgramPopup() {
                     className="flex items-baseline justify-between gap-4 py-3"
                   >
                     <span className="flex items-baseline gap-3">
-                      <span className="w-5 text-xs font-semibold tabular-nums text-muted">
+                      <span className="w-5 shrink-0 text-xs font-semibold tabular-nums text-muted">
                         {i + 1}.
                       </span>
-                      <span className="font-display text-lg leading-tight">
-                        {item.title}
+                      <span>
+                        <span className="block font-display text-lg leading-tight">
+                          {item.title}
+                        </span>
+                        {item.note && (
+                          <span className="mt-0.5 block text-xs text-muted">
+                            {item.note}
+                          </span>
+                        )}
                       </span>
                     </span>
                     <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-clay">
