@@ -8,6 +8,7 @@ import { LeaderboardTable } from "./LeaderboardTable";
 import { MatchupNames } from "./MatchupNames";
 import { PlayerLabel } from "./PlayerLabel";
 import { PlayingCardHeader } from "./PlayingCardHeader";
+import { ProgramPopup } from "./ProgramPopup";
 import type { GameView, Snapshot } from "@/lib/queries";
 
 const TABS = ["Playing", "Queue", "Results"] as const;
@@ -143,6 +144,9 @@ export function SpectatorApp({ token }: { token: string }) {
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-clay">
             {snapshot.session.status === "ended" ? "Final results" : "In play"}
           </p>
+        </div>
+        <div className="mt-3">
+          <ProgramPopup />
         </div>
       </header>
 
