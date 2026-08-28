@@ -50,6 +50,7 @@ import {
   computeShortfall,
   loadSessionData,
 } from "@/lib/queries";
+import { partnerKey } from "@/lib/partners";
 import { generateSchedule as computeSuggestions } from "@/lib/scheduler";
 import { bracketLabel, tournamentStatus } from "@/lib/tournament";
 import type { Game, Player } from "@/lib/schema";
@@ -221,6 +222,24 @@ export default async function SessionPage({
   // the hard rules (rating, partner uniqueness - and gender balance in
   // Tournament sessions) always apply.
   const suggestable = available;
+  // Partnerships already used tonight (partnerKey -> first game No.), so the
+  // manual picker can warn on a repeat. The edit popup gets the map without
+  // the game being edited - its own current pair isn't a repeat.
+  const partnersExcept = (skipGameId?: number) => {
+    const used: Record<string, number> = {};
+    for (const g of inOrder) {
+      if (g.id === skipGameId) continue;
+      for (const [a, b] of [
+        [g.t1p1, g.t1p2],
+        [g.t2p1, g.t2p2],
+      ]) {
+        const k = partnerKey(a, b);
+        if (used[k] === undefined) used[k] = g.seq;
+      }
+    }
+    return used;
+  };
+  const usedPartners = partnersExcept();
   const busiest = Math.max(
     0,
     ...suggestable.map(
@@ -554,6 +573,7 @@ export default async function SessionPage({
               options={playerOptions(available)}
               suggestions={suggestions}
               enforceGender={session.tournament}
+              usedPartners={usedPartners}
             />
           )}
           {isTournament && tstatus?.phase !== "champions" && (
@@ -757,6 +777,7 @@ export default async function SessionPage({
                         options={playerOptions(available)}
                         defaults={[g.t1p1, g.t1p2, g.t2p1, g.t2p2]}
                         enforceGender={session.tournament}
+                        usedPartners={partnersExcept(g.id)}
                       />
                       <form action={deleteGame}>
                         <input type="hidden" name="sessionId" value={session.id} />

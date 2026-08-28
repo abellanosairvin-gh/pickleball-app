@@ -15,6 +15,7 @@ export function GameEditPopup({
   options,
   defaults,
   enforceGender,
+  usedPartners,
 }: {
   sessionId: number;
   gameId: number;
@@ -22,6 +23,8 @@ export function GameEditPopup({
   options: Option[];
   defaults: [number, number, number, number];
   enforceGender?: boolean;
+  /** Partnerships from every other game - this game's own pair isn't a repeat. */
+  usedPartners?: Record<string, number>;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -86,6 +89,7 @@ export function GameEditPopup({
                   submitLabel="Save"
                   onCancel={() => setOpen(false)}
                   enforceGender={enforceGender}
+                  usedPartners={usedPartners}
                 />
               </form>
             </div>

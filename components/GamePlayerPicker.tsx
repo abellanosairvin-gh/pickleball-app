@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { partnerKey } from "@/lib/partners";
 
 type Option = { id: number; label: string; gender?: "M" | "F" };
 
@@ -9,7 +10,9 @@ type Option = { id: number; label: string; gender?: "M" | "F" };
  * with live validation: defaults to four different players (the first legal
  * suggestion when one exists), blocks submitting while any player occupies
  * more than one slot, and - when `enforceGender` is on - while the Gender
- * Balance Rule is broken (both teams need the same gender make-up).
+ * Balance Rule is broken (both teams need the same gender make-up). A pair
+ * that has already partnered this session (`usedPartners`) gets a warning
+ * but can still be queued - the organizer's override.
  */
 export function GamePlayerPicker({
   options,
@@ -18,6 +21,7 @@ export function GamePlayerPicker({
   suggestions,
   onCancel,
   enforceGender = false,
+  usedPartners,
 }: {
   options: Option[];
   defaults?: [number, number, number, number];
@@ -31,6 +35,8 @@ export function GamePlayerPicker({
   onCancel?: () => void;
   /** Apply the Gender Balance Rule to manual picks (Tournament sessions only). */
   enforceGender?: boolean;
+  /** Partnerships already used this session: partnerKey -> game No. */
+  usedPartners?: Record<string, number>;
 }) {
   const [vals, setVals] = useState<string[]>(() =>
     (defaults ?? suggestions?.[0] ?? options.slice(0, 4).map((o) => o.id)).map(
@@ -48,6 +54,19 @@ export function GamePlayerPicker({
     !duplicated &&
     options.some((o) => o.gender !== undefined) &&
     women(vals[0], vals[1]) !== women(vals[2], vals[3]);
+
+  // Repeat partnerships (warn only): either team has partnered before.
+  const labelOf = new Map(options.map((o) => [String(o.id), o.label]));
+  const repeats =
+    usedPartners && !duplicated
+      ? ([vals.slice(0, 2), vals.slice(2, 4)] as [string, string][])
+          .map(([a, b]) => ({
+            a: labelOf.get(a) ?? a,
+            b: labelOf.get(b) ?? b,
+            seq: usedPartners[partnerKey(Number(a), Number(b))],
+          }))
+          .filter((r) => r.seq !== undefined)
+      : [];
 
   const select = (i: number) => {
     // Players occupying the other three slots are hidden from this dropdown.
@@ -111,6 +130,12 @@ export function GamePlayerPicker({
           MM vs MM, MF vs MF, and FF vs FF.
         </p>
       )}
+      {repeats.map((r) => (
+        <p key={`${r.a}|${r.b}`} className="text-xs text-clay-deep">
+          {r.a} &amp; {r.b} already partnered in game No. {r.seq} - partners
+          normally change every game.
+        </p>
+      ))}
       <div className="mt-1 flex items-center gap-2">
         {suggestions && suggestions.length > 0 && (
           <button
