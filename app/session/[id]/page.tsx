@@ -380,11 +380,19 @@ export default async function SessionPage({
         shortfall.length > 0 &&
         queue.length + playing.length + completed.length > 0 && (
         <div className="mb-4 rounded-md border border-clay-soft bg-clay-tint p-3 text-sm text-ink">
-          <strong className="font-semibold">Best effort:</strong>{" "}
-          {shortfall
-            .map((s) => `${s.name} gets ${s.scheduled} of ${session.gameCap}`)
-            .join(", ")}
-          . Top up to add just their games, hand-fix via the queue editor, or
+          <strong className="font-semibold">Best effort</strong> - these
+          players fall short of the cap:
+          <ul className="my-2 flex flex-col gap-0.5">
+            {shortfall.map((s) => (
+              <li key={s.name} className="flex items-baseline gap-2">
+                <span className="font-semibold">{s.name}</span>
+                <span className="text-muted">
+                  {s.scheduled} of {session.gameCap}
+                </span>
+              </li>
+            ))}
+          </ul>
+          Top up to add just their games, hand-fix via the queue editor, or
           create fixed games.
         </div>
       )}
