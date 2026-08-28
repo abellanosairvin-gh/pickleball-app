@@ -580,7 +580,6 @@ export default async function SessionPage({
               sessionId={session.id}
               options={playerOptions(available)}
               suggestions={suggestions}
-              enforceGender={session.tournament}
               usedPartners={usedPartners}
             />
           )}
@@ -784,7 +783,6 @@ export default async function SessionPage({
                         seq={g.seq}
                         options={playerOptions(available)}
                         defaults={[g.t1p1, g.t1p2, g.t2p1, g.t2p2]}
-                        enforceGender={session.tournament}
                         usedPartners={partnersExcept(g.id)}
                       />
                       <form action={deleteGame}>

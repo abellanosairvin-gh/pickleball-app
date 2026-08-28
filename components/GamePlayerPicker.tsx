@@ -9,10 +9,9 @@ type Option = { id: number; label: string; gender?: "M" | "F" };
  * The four player slots of a game (Team 1 = first two, Team 2 = last two),
  * with live validation: defaults to four different players (the first legal
  * suggestion when one exists), blocks submitting while any player occupies
- * more than one slot, and - when `enforceGender` is on - while the Gender
- * Balance Rule is broken (both teams need the same gender make-up). A pair
- * that has already partnered this session (`usedPartners`) gets a warning
- * but can still be queued - the organizer's override.
+ * more than one slot. Hand-picked games are the organizer's override: any
+ * gender split is allowed, and a pair that has already partnered this
+ * session (`usedPartners`) gets a warning but can still be queued.
  */
 export function GamePlayerPicker({
   options,
@@ -20,7 +19,6 @@ export function GamePlayerPicker({
   submitLabel,
   suggestions,
   onCancel,
-  enforceGender = false,
   usedPartners,
 }: {
   options: Option[];
@@ -33,8 +31,6 @@ export function GamePlayerPicker({
   suggestions?: [number, number, number, number][];
   /** When set, renders a Cancel button to the left of the submit button. */
   onCancel?: () => void;
-  /** Apply the Gender Balance Rule to manual picks (Tournament sessions only). */
-  enforceGender?: boolean;
   /** Partnerships already used this session: partnerKey -> game No. */
   usedPartners?: Record<string, number>;
 }) {
@@ -45,15 +41,6 @@ export function GamePlayerPicker({
   );
   const [suggestionIdx, setSuggestionIdx] = useState(0);
   const duplicated = new Set(vals).size !== 4;
-
-  const genderOf = new Map(options.map((o) => [String(o.id), o.gender]));
-  const women = (a: string, b: string) =>
-    (genderOf.get(a) === "F" ? 1 : 0) + (genderOf.get(b) === "F" ? 1 : 0);
-  const genderViolation =
-    enforceGender &&
-    !duplicated &&
-    options.some((o) => o.gender !== undefined) &&
-    women(vals[0], vals[1]) !== women(vals[2], vals[3]);
 
   // Repeat partnerships (warn only): either team has partnered before.
   const labelOf = new Map(options.map((o) => [String(o.id), o.label]));
@@ -124,12 +111,6 @@ export function GamePlayerPicker({
           Each slot needs a different player.
         </p>
       )}
-      {genderViolation && (
-        <p className="text-xs text-clay-deep">
-          Both teams need the same gender make-up - legal matchups are
-          MM vs MM, MF vs MF, and FF vs FF.
-        </p>
-      )}
       {repeats.map((r) => (
         <p key={`${r.a}|${r.b}`} className="text-xs text-clay-deep">
           {r.a} &amp; {r.b} already partnered in game No. {r.seq} - partners
@@ -176,7 +157,7 @@ export function GamePlayerPicker({
         )}
         <button
           type="submit"
-          disabled={duplicated || genderViolation}
+          disabled={duplicated}
           className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-card hover:bg-ink-deep disabled:opacity-40"
         >
           {submitLabel}

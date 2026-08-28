@@ -12,13 +12,11 @@ export function FixedGamePopup({
   sessionId,
   options,
   suggestions,
-  enforceGender,
   usedPartners,
 }: {
   sessionId: number;
   options: Option[];
   suggestions?: [number, number, number, number][];
-  enforceGender?: boolean;
   usedPartners?: Record<string, number>;
 }) {
   const [open, setOpen] = useState(false);
@@ -68,7 +66,6 @@ export function FixedGamePopup({
                   submitLabel="Queue"
                   suggestions={suggestions}
                   onCancel={() => setOpen(false)}
-                  enforceGender={enforceGender}
                   usedPartners={usedPartners}
                 />
               </form>
