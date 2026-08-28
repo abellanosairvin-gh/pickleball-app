@@ -268,7 +268,9 @@ export function buildSnapshot(
 /**
  * Active players whose scheduled games (queued+playing+completed) fall short
  * of the Game Cap, with the No. of the last game each is in (by queue
- * position) - null when they have none yet.
+ * position) - null when they have none yet. Ordered by that last game:
+ * players with no games first, then earliest last game first, so the
+ * ones who've been waiting longest lead the list.
  */
 export function computeShortfall(
   session: Session,
@@ -294,5 +296,9 @@ export function computeShortfall(
       name: p.name,
       scheduled: counts.get(p.id) ?? 0,
       lastGame: lastGame.get(p.id) ?? null,
-    }));
+    }))
+    .sort(
+      (a, b) =>
+        (a.lastGame ?? -1) - (b.lastGame ?? -1) || a.name.localeCompare(b.name),
+    );
 }
