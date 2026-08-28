@@ -503,21 +503,27 @@ export default async function SessionPage({
                   ? "Seed a round?"
                   : queue.some((g) => !g.pinned)
                     ? "Regenerate the queue?"
-                    : "Generate the schedule?"
+                    : queue.some((g) => g.pinned)
+                      ? "Fill in around the pinned games?"
+                      : "Generate the schedule?"
               }
               message={
                 session.defaultMode === "ladder"
                   ? "Queues one game for each waiting player. Nothing already queued is touched - results drive the rest of the night."
                   : queue.some((g) => !g.pinned)
                     ? "Un-started, un-pinned games are replaced. Completed, playing, and pinned games are kept."
-                    : "Builds the full night’s games for the current roster."
+                    : queue.some((g) => g.pinned)
+                      ? "Pinned games stay put. The rest of the night is generated around them - they count toward each player’s cap, their partnerships won’t repeat, and new games are spaced out after them."
+                      : "Builds the full night’s games for the current roster."
               }
               confirmLabel={
                 session.defaultMode === "ladder"
                   ? "Seed round"
                   : queue.some((g) => !g.pinned)
                     ? "Regenerate"
-                    : "Generate"
+                    : queue.some((g) => g.pinned)
+                      ? "Fill in"
+                      : "Generate"
               }
               className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-card hover:bg-ink-deep"
             >
