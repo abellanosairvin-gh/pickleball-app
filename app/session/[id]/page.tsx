@@ -162,17 +162,20 @@ export default async function SessionPage({
   // night in play order (completed, on court, then the queue) counting
   // regular games; a player's cap+1-th game onward is a fill-in that won't
   // count for them - shown in orange on the courts and in the queue.
+  // The night in play order: completed games by wall-clock finish time, then
+  // games on court by start time, then the queue. Shared by the over-cap walk
+  // and the Fixed game Suggest (whose "rest" is a player's position here).
+  const inOrder = [
+    ...[...completed].reverse(),
+    ...[...playing].sort(
+      (a, b) =>
+        (a.startedAt?.getTime() ?? 0) - (b.startedAt?.getTime() ?? 0),
+    ),
+    ...queue,
+  ];
   const overCapIn = new Map<number, Set<number>>();
   {
     const played = new Map<number, number>();
-    const inOrder = [
-      ...[...completed].reverse(),
-      ...[...playing].sort(
-        (a, b) =>
-          (a.startedAt?.getTime() ?? 0) - (b.startedAt?.getTime() ?? 0),
-      ),
-      ...queue,
-    ];
     for (const g of inOrder) {
       if (g.round !== null) continue;
       for (const id of [g.t1p1, g.t1p2, g.t2p1, g.t2p2]) {
@@ -208,12 +211,20 @@ export default async function SessionPage({
     }
   }
   // What the matchmaker would queue next - feeds the Fixed game Suggest
-  // button. The cap is lifted just past the busiest player so suggestions
-  // keep coming for shortfall-filling games after most players hit the cap;
-  // the hard rules (gender, rating, partner uniqueness) always apply.
+  // button. Only players who can actually play next are candidates: checked
+  // in and not on a court right now. Games are fed in play order, so "longest
+  // wait" means the most wall-clock rest since a player's last game (and a
+  // player already sitting in the queue reads as busy). The cap is lifted
+  // just past the busiest player so suggestions keep coming for
+  // shortfall-filling games after most players hit the cap; the hard rules
+  // (rating, partner uniqueness - and gender balance in Tournament sessions)
+  // always apply.
+  const suggestable = available.filter(
+    (p) => p.checkedIn && !onCourt.has(p.id),
+  );
   const busiest = Math.max(
     0,
-    ...available.map(
+    ...suggestable.map(
       (p) =>
         allGames.filter((g) =>
           [g.t1p1, g.t1p2, g.t2p1, g.t2p2].includes(p.id),
@@ -221,20 +232,21 @@ export default async function SessionPage({
     ),
   );
   const suggestions =
-    session.status === "active" && available.length >= 4
+    session.status === "active" && suggestable.length >= 4
       ? computeSuggestions({
-          players: available.map((p) => ({
+          players: suggestable.map((p) => ({
             id: p.id,
             rating: p.rating,
             gender: p.gender,
           })),
           cap: Math.max(session.gameCap, busiest + 1),
           mode: session.defaultMode === "rating" ? "rating" : "random",
-          existing: allGames.map((g) => ({
+          existing: inOrder.map((g) => ({
             t1: [g.t1p1, g.t1p2] as [number, number],
             t2: [g.t2p1, g.t2p2] as [number, number],
           })),
           restarts: 20,
+          genderRule: session.tournament,
         })
           .games.slice(0, 5)
           .map(
@@ -536,7 +548,7 @@ export default async function SessionPage({
               sessionId={session.id}
               options={playerOptions(available)}
               suggestions={suggestions}
-              enforceGender={session.defaultMode !== "ladder"}
+              enforceGender={session.tournament}
             />
           )}
           {isTournament && tstatus?.phase !== "champions" && (
@@ -739,7 +751,7 @@ export default async function SessionPage({
                         seq={g.seq}
                         options={playerOptions(available)}
                         defaults={[g.t1p1, g.t1p2, g.t2p1, g.t2p2]}
-                        enforceGender={session.defaultMode !== "ladder"}
+                        enforceGender={session.tournament}
                       />
                       <form action={deleteGame}>
                         <input type="hidden" name="sessionId" value={session.id} />

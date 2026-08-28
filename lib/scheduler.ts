@@ -16,6 +16,11 @@ export type GenerateInput = {
   existing: Matchup[];
   restarts?: number;
   /**
+   * Gender Balance Rule: both teams must have the same gender make-up.
+   * On for Tournament sessions only - regular nights are genderless.
+   */
+  genderRule?: boolean;
+  /**
    * Fill-in mode (top-up): every game must seat at least one player still
    * under the cap; the other seats may go to players already at the cap
    * (at most one game over it), fewest games and longest wait first. Without
@@ -47,8 +52,9 @@ function ratingLegal(four: SchedPlayer[]): boolean {
 }
 
 /**
- * Hard rule (Gender Balance): both teams have the same gender make-up -
- * MM vs MM, MF vs MF, or FF vs FF. Never MM vs FF or MF vs FF.
+ * Hard rule (Gender Balance, Tournament sessions only): both teams have the
+ * same gender make-up - MM vs MM, MF vs MF, or FF vs FF. Never MM vs FF or
+ * MF vs FF.
  */
 function genderLegal(t1: SchedPlayer[], t2: SchedPlayer[]): boolean {
   const women = (t: SchedPlayer[]) =>
@@ -112,7 +118,7 @@ const PARTITIONS: [Team, Team][] = [
 ];
 
 function runOnce(input: GenerateInput, rand: () => number) {
-  const { players, cap, mode, existing, fillIn = false } = input;
+  const { players, cap, mode, existing, fillIn = false, genderRule = false } = input;
   const byId = new Map(players.map((p) => [p.id, p]));
   const state: State = {
     counts: new Map(players.map((p) => [p.id, 0])),
@@ -175,7 +181,7 @@ function runOnce(input: GenerateInput, rand: () => number) {
                 const t2 = [four[pi2[0]], four[pi2[1]]];
                 if (state.partners.has(pairKey(t1[0].id, t1[1].id))) continue;
                 if (state.partners.has(pairKey(t2[0].id, t2[1].id))) continue;
-                if (!genderLegal(t1, t2)) continue;
+                if (genderRule && !genderLegal(t1, t2)) continue;
                 // Each fill-in seat is a game that won't count for that
                 // player - strongly prefer seating the lacking players.
                 const score =
@@ -229,7 +235,8 @@ function runOnce(input: GenerateInput, rand: () => number) {
 /**
  * Best-effort schedule generation (ADR-0002). Multi-restart randomized greedy:
  * maximizes total legal games under the hard rules (Game Cap, rating
- * compatibility, Gender Balance Rule, partner uniqueness), then prefers the
+ * compatibility, Gender Balance Rule when `genderRule` is on, partner
+ * uniqueness), then prefers the
  * run with the best soft score (opponent variety, spacing, rating cohesion).
  */
 export function generateSchedule(input: GenerateInput): GenerateResult {

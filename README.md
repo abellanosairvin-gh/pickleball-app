@@ -43,9 +43,9 @@ See `CONTEXT.md` for the domain vocabulary and `docs/adr/` for key decisions.
    (e.g. `Sarah, F, mid`; shorthand `b`/`m`/`a` works).
 3. **Generate the schedule** — the whole night is generated up front under the
    hard rules: nobody exceeds the cap, beginners and advanced players never
-   share a game, both teams have the same gender make-up (MM vs MM, MF vs
-   MF, FF vs FF), and no two
-   players partner twice all night. If a full schedule is impossible, a banner
+   share a game, and no two players partner twice all night. Tournament
+   sessions add one more: both teams have the same gender make-up (MM vs MM,
+   MF vs MF, FF vs FF); regular nights are genderless. If a full schedule is impossible, a banner
    reports who falls short so you can hand-fix.
 4. **Run games** — tap Start on a queued game and pick a free court; enter the
    final score to complete it (played to 11 by convention; only ties are

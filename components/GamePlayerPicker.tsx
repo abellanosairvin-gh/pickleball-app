@@ -22,11 +22,14 @@ export function GamePlayerPicker({
   options: Option[];
   defaults?: [number, number, number, number];
   submitLabel: string;
-  /** Ranked rule-respecting matchups the Suggest button cycles through. */
+  /**
+   * Ranked rule-respecting matchups the Suggest button cycles through -
+   * checked-in, off-court players with the most rest first.
+   */
   suggestions?: [number, number, number, number][];
   /** When set, renders a Cancel button to the left of the submit button. */
   onCancel?: () => void;
-  /** Apply the Gender Balance Rule to manual picks (off for ladder mode). */
+  /** Apply the Gender Balance Rule to manual picks (Tournament sessions only). */
   enforceGender?: boolean;
 }) {
   const [vals, setVals] = useState<string[]>(() =>

@@ -327,6 +327,7 @@ async function regenerate(
       cap: 1,
       mode: "random",
       existing: [],
+      genderRule: false,
     });
     let seq = Math.max(0, ...allGames.map((g) => g.seq));
     let queueOrder = Math.max(0, ...allGames.map((g) => g.queueOrder));
@@ -373,6 +374,8 @@ async function regenerate(
     // Top-up seats at-cap players as fill-ins so even one or two players
     // lacking a game get one (their fill-in partners' results don't count).
     fillIn: opts.keepQueue,
+    // Regular nights are genderless; only Tournament sessions balance teams.
+    genderRule: session.tournament,
   });
 
   // Number on from the games that survive the regenerate, not the ones just
