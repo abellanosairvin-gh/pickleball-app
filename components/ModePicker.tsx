@@ -24,7 +24,7 @@ export function ModePicker() {
           <option value="random">Random · Fair Rotation</option>
           <option value="rating">Rating-Based · Even Matches</option>
           <option value="fixed">Manual · Hand-Picked Games</option>
-          <option value="ladder">Winners · Losers · Genderless</option>
+          <option value="ladder">Winners · Losers</option>
         </select>
       </label>
       <label className="col-span-2 flex cursor-pointer items-center gap-2.5 rounded-md border border-line bg-paper p-3">

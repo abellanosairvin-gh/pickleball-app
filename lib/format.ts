@@ -63,5 +63,5 @@ export const MODE_LABEL: Record<string, string> = {
   random: "Random · Fair Rotation",
   rating: "Rating-Based · Even Matches",
   fixed: "Manual · Hand-Picked Games",
-  ladder: "Winners · Losers · Genderless",
+  ladder: "Winners · Losers",
 };
