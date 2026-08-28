@@ -24,7 +24,7 @@ export function GamePlayerPicker({
   submitLabel: string;
   /**
    * Ranked rule-respecting matchups the Suggest button cycles through -
-   * checked-in, off-court players with the most rest first.
+   * off-court players with the most rest first.
    */
   suggestions?: [number, number, number, number][];
   /** When set, renders a Cancel button to the left of the submit button. */

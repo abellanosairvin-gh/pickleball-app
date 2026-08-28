@@ -211,17 +211,16 @@ export default async function SessionPage({
     }
   }
   // What the matchmaker would queue next - feeds the Fixed game Suggest
-  // button. Only players who can actually play next are candidates: checked
-  // in and not on a court right now. Games are fed in play order, so "longest
+  // button. Only players who can actually play next are candidates: not on
+  // a court right now (check-in is ignored - the queue is usually built
+  // before people arrive). Games are fed in play order, so "longest
   // wait" means the most wall-clock rest since a player's last game (and a
   // player already sitting in the queue reads as busy). The cap is lifted
   // just past the busiest player so suggestions keep coming for
   // shortfall-filling games after most players hit the cap; the hard rules
   // (rating, partner uniqueness - and gender balance in Tournament sessions)
   // always apply.
-  const suggestable = available.filter(
-    (p) => p.checkedIn && !onCourt.has(p.id),
-  );
+  const suggestable = available.filter((p) => !onCourt.has(p.id));
   const busiest = Math.max(
     0,
     ...suggestable.map(
