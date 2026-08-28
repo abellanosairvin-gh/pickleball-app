@@ -265,21 +265,34 @@ export function buildSnapshot(
   };
 }
 
-/** Active players whose scheduled games (queued+playing+completed) fall short of the Game Cap. */
+/**
+ * Active players whose scheduled games (queued+playing+completed) fall short
+ * of the Game Cap, with the No. of the last game each is in (by queue
+ * position) - null when they have none yet.
+ */
 export function computeShortfall(
   session: Session,
   allPlayers: Player[],
   allGames: Game[],
-): { name: string; scheduled: number }[] {
+): { name: string; scheduled: number; lastGame: number | null }[] {
   const counts = new Map<number, number>();
-  for (const g of allGames) {
+  const lastGame = new Map<number, number>();
+  const ordered = [...allGames].sort(
+    (a, b) => a.queueOrder - b.queueOrder || a.seq - b.seq,
+  );
+  for (const g of ordered) {
     for (const id of [g.t1p1, g.t1p2, g.t2p1, g.t2p2]) {
       counts.set(id, (counts.get(id) ?? 0) + 1);
+      lastGame.set(id, g.seq);
     }
   }
   return allPlayers
     .filter(
       (p) => p.active && !p.out && (counts.get(p.id) ?? 0) < session.gameCap,
     )
-    .map((p) => ({ name: p.name, scheduled: counts.get(p.id) ?? 0 }));
+    .map((p) => ({
+      name: p.name,
+      scheduled: counts.get(p.id) ?? 0,
+      lastGame: lastGame.get(p.id) ?? null,
+    }));
 }

@@ -388,6 +388,9 @@ export default async function SessionPage({
                 <span className="font-semibold">{s.name}</span>
                 <span className="text-muted">
                   {s.scheduled} of {session.gameCap}
+                  {s.lastGame !== null
+                    ? ` · last in No. ${s.lastGame}`
+                    : " · no games yet"}
                 </span>
               </li>
             ))}
