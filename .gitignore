@@ -15,3 +15,6 @@ out/
 # Misc
 *.tsbuildinfo
 next-env.d.ts
+
+# Git Bash crash dumps
+*.stackdump
