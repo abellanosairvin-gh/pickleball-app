@@ -348,6 +348,20 @@ async function regenerate(
     return;
   }
 
+  // Guard: a fully hand-built queue (every queued game pinned) with nobody
+  // short of the cap is left alone - there is nothing to regenerate or add.
+  {
+    const unpinned = allGames.some((g) => g.status === "queued" && !g.pinned);
+    const counts = new Map<number, number>();
+    for (const g of allGames) {
+      if (g.round !== null) continue;
+      for (const id of [g.t1p1, g.t1p2, g.t2p1, g.t2p2])
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    const short = roster.some((p) => (counts.get(p.id) ?? 0) < session.gameCap);
+    if (!unpinned && !short && allGames.length > 0) return;
+  }
+
   const removable = opts.keepQueue
     ? []
     : allGames.filter((g) => g.status === "queued" && !g.pinned);

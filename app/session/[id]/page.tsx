@@ -283,6 +283,14 @@ export default async function SessionPage({
     (_, i) => i + 1,
   ).filter((c) => !usedCourts.has(c));
   const ended = session.status === "ended";
+  // Nothing for the generator to do: every queued game is hand-built
+  // (pinned) and nobody is short of the cap. Generate/Top up are hidden so a
+  // stray tap can't disturb a hand-built night.
+  const generatorIdle =
+    session.defaultMode !== "ladder" &&
+    queue.length > 0 &&
+    queue.every((g) => g.pinned) &&
+    shortfall.length === 0;
 
   // Court-aware queue highlighting: with N free courts, walk the queue in
   // order and pick the games that could start right now. A game is ready only
@@ -525,6 +533,13 @@ export default async function SessionPage({
       {/* schedule controls */}
       {!ended && (
         <section className="mb-6 flex flex-wrap items-center gap-3">
+          {generatorIdle ? (
+            <p className="rounded-md border border-line bg-paper px-3 py-2 text-xs text-muted">
+              Hand-built queue, everyone at the cap - Generate and Top up are
+              off. Edit or delete a queued game, or add a fixed game, to
+              change it.
+            </p>
+          ) : (
           <form action={generateSchedule}>
             <input type="hidden" name="sessionId" value={session.id} />
             <ConfirmSubmit
@@ -564,7 +579,9 @@ export default async function SessionPage({
                   : "Generate"}
             </ConfirmSubmit>
           </form>
-          {session.defaultMode !== "ladder" &&
+          )}
+          {!generatorIdle &&
+            session.defaultMode !== "ladder" &&
             queue.length + playing.length + completed.length > 0 && (
               <form action={topUpSchedule}>
                 <input type="hidden" name="sessionId" value={session.id} />
