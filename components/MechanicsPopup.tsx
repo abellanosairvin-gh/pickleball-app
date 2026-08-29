@@ -15,7 +15,7 @@ const MECHANICS: { title: string; note: string }[] = [
   },
   {
     title: "Games are spread out",
-    note: "Matches are spaced through the event so everyone gets time to socialize, enjoy, and eat snacks between games.",
+    note: "Matches are spaced through the event so everyone gets time to socialize and enjoy between games.",
   },
 ];
 
