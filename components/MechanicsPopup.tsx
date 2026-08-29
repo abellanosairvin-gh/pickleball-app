@@ -7,11 +7,11 @@ import { createPortal } from "react-dom";
 const MECHANICS: { title: string; note: string }[] = [
   {
     title: "Fixed matchups",
-    note: "Teams and opponents are set in advance — every game is a pre-arranged matchup.",
+    note: "Teams and opponents are set in advance. Every game is a pre-arranged matchup.",
   },
   {
     title: "Sudden death to 11",
-    note: "First team to 11 wins the game. No win-by-two — 11 ends it.",
+    note: "First team to 11 wins the game. No win-by-two, 11 ends it. Take note of your scores, since they are logged and count toward the playoffs and tournament.",
   },
   {
     title: "Games are spread out",
