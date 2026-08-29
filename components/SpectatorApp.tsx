@@ -8,6 +8,7 @@ import { LeaderboardTable } from "./LeaderboardTable";
 import { MatchupNames } from "./MatchupNames";
 import { PlayerLabel } from "./PlayerLabel";
 import { PlayingCardHeader } from "./PlayingCardHeader";
+import { MechanicsPopup } from "./MechanicsPopup";
 import { ProgramPopup } from "./ProgramPopup";
 import type { GameView, Snapshot } from "@/lib/queries";
 
@@ -145,8 +146,9 @@ export function SpectatorApp({ token }: { token: string }) {
             {snapshot.session.status === "ended" ? "Final results" : "In play"}
           </p>
         </div>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap gap-2">
           <ProgramPopup />
+          <MechanicsPopup />
         </div>
       </header>
 
