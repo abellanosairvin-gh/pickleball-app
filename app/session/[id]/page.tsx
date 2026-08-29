@@ -13,6 +13,7 @@ import { PlayingCardHeader } from "@/components/PlayingCardHeader";
 import { PlayerEditPopup } from "@/components/PlayerEditPopup";
 import { PlayerLabel } from "@/components/PlayerLabel";
 import { QrPopup } from "@/components/QrPopup";
+import { QueueSearch } from "@/components/QueueSearch";
 import { ScoreEditPopup } from "@/components/ScoreEditPopup";
 import { ScoreForm } from "@/components/ScoreForm";
 import { WaitBadge } from "@/components/WaitBadge";
@@ -664,8 +665,8 @@ export default async function SessionPage({
             No games queued.
           </p>
         ) : (
-          <ol className="space-y-2.5">
-            {queue.map((g, idx) => {
+          <QueueSearch
+            entries={queue.map((g, idx) => {
               const ready = readyGames.has(g.id);
               const blockers = blockedGames.get(g.id);
               const outHere = outNames(g);
@@ -704,7 +705,10 @@ export default async function SessionPage({
                       : blockers
                         ? { text: `Waiting on ${blockers.join(", ")}`, tone: "text-clay-deep" }
                         : null;
-              return (
+              const names = [g.t1p1, g.t1p2, g.t2p1, g.t2p2].map(
+                (id) => byId.get(id)?.name ?? "?",
+              );
+              const node = (
               <li
                 key={g.id}
                 className={`rounded-md border p-3 shadow-[0_1px_0_#d9d2c2] ${tone}`}
@@ -838,8 +842,9 @@ export default async function SessionPage({
                 )}
               </li>
               );
+              return { id: g.id, names, node };
             })}
-          </ol>
+          />
         )}
       </section>
             </>
