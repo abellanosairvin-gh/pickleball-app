@@ -10,6 +10,7 @@ import { PlayerLabel } from "./PlayerLabel";
 import { PlayingCardHeader } from "./PlayingCardHeader";
 import { MechanicsPopup } from "./MechanicsPopup";
 import { ProgramPopup } from "./ProgramPopup";
+import { QueueSearch } from "./QueueSearch";
 import type { GameView, Snapshot } from "@/lib/queries";
 
 const TABS = ["Playing", "Queue", "Results"] as const;
@@ -197,57 +198,65 @@ export function SpectatorApp({ token }: { token: string }) {
           </div>
         )}
 
-        {tab === "Queue" && (
-          <ol className="space-y-3.5">
-            {snapshot.queue.length === 0 && (
-              <p className="p-6 text-center text-sm text-muted">
-                Nothing queued.
-              </p>
-            )}
-            {snapshot.queue.map((g, i) => {
-              // The next game up sits on clay-tinted paper; the rest on card.
-              const next = i === 0;
-              return (
-                <li
-                  key={g.id}
-                  className={`rounded-md border p-4 shadow-[0_1px_0_#d9d2c2] ${
-                    next ? "border-clay-line bg-clay-tint" : "border-line bg-card"
-                  }`}
-                >
-                  <div
-                    className={`flex items-baseline justify-between gap-3 border-b pb-2 ${
-                      next ? "border-clay-line" : "border-rule"
+        {tab === "Queue" &&
+          (snapshot.queue.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted">
+              Nothing queued.
+            </p>
+          ) : (
+            <QueueSearch
+              listClassName="space-y-3.5"
+              entries={snapshot.queue.map((g, i) => {
+                // The next game up sits on clay-tinted paper; the rest on card.
+                const next = i === 0;
+                const node = (
+                  <li
+                    key={g.id}
+                    className={`rounded-md border p-4 shadow-[0_1px_0_#d9d2c2] ${
+                      next
+                        ? "border-clay-line bg-clay-tint"
+                        : "border-line bg-card"
                     }`}
                   >
-                    <span
-                      className={`text-xs font-bold uppercase tracking-[0.16em] ${
-                        next ? "text-clay" : "text-muted"
+                    <div
+                      className={`flex items-baseline justify-between gap-3 border-b pb-2 ${
+                        next ? "border-clay-line" : "border-rule"
                       }`}
                     >
-                      {queueOrdinal(i)}
-                    </span>
-                    <span
-                      className={`whitespace-nowrap text-xs ${
-                        next ? "text-clay-deep" : "text-muted"
-                      }`}
-                    >
-                      No. {g.seq}
-                    </span>
-                  </div>
-                  {g.label && (
-                    <BracketChip
-                      block
-                      label={g.label}
-                      stage={g.stage}
-                      className="mt-2"
-                    />
-                  )}
-                  <Matchup g={g} />
-                </li>
-              );
-            })}
-          </ol>
-        )}
+                      <span
+                        className={`text-xs font-bold uppercase tracking-[0.16em] ${
+                          next ? "text-clay" : "text-muted"
+                        }`}
+                      >
+                        {queueOrdinal(i)}
+                      </span>
+                      <span
+                        className={`whitespace-nowrap text-xs ${
+                          next ? "text-clay-deep" : "text-muted"
+                        }`}
+                      >
+                        No. {g.seq}
+                      </span>
+                    </div>
+                    {g.label && (
+                      <BracketChip
+                        block
+                        label={g.label}
+                        stage={g.stage}
+                        className="mt-2"
+                      />
+                    )}
+                    <Matchup g={g} />
+                  </li>
+                );
+                return {
+                  id: g.id,
+                  names: [...g.team1.names, ...g.team2.names],
+                  node,
+                };
+              })}
+            />
+          ))}
 
         {tab === "Results" && (
           <div className="space-y-6">

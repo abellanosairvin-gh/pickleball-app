@@ -11,12 +11,19 @@ export type QueueSearchEntry = {
 };
 
 /**
- * Search box over the organizer's queue: type a player's name and only the
- * queued games they're in stay visible. Cards are rendered by the server so
- * the filter just hides the rest - ordinals and move buttons keep referring
- * to the real queue positions.
+ * Search box over the queue (organizer and spectator): type a player's name
+ * and only the queued games they're in stay visible. Cards are rendered by
+ * the caller so the filter just hides the rest - ordinals and move buttons
+ * keep referring to the real queue positions.
  */
-export function QueueSearch({ entries }: { entries: QueueSearchEntry[] }) {
+export function QueueSearch({
+  entries,
+  listClassName = "space-y-2.5",
+}: {
+  entries: QueueSearchEntry[];
+  /** Spacing between cards; the spectator list breathes a little more. */
+  listClassName?: string;
+}) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const shown = q
@@ -59,7 +66,7 @@ export function QueueSearch({ entries }: { entries: QueueSearchEntry[] }) {
           No queued games for &ldquo;{query.trim()}&rdquo;.
         </p>
       ) : (
-        <ol className="space-y-2.5">{shown.map((e) => e.node)}</ol>
+        <ol className={listClassName}>{shown.map((e) => e.node)}</ol>
       )}
     </div>
   );
