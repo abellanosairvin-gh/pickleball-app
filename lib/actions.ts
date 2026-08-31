@@ -473,57 +473,6 @@ export async function startTournament(formData: FormData) {
   revalidate(sessionId);
 }
 
-/**
- * TEMP dev tool (delete before real use): completes every queued/playing
- * game with random valid scores so playoffs can be simulated. Each press
- * finishes the open games and lets the bracket advance one round.
- */
-export async function simulateScores(formData: FormData) {
-  await requireAuth();
-  const sessionId = Number(formData.get("sessionId"));
-  const [session] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, sessionId));
-  if (!session || session.status !== "active") return;
-  const open = await db
-    .select()
-    .from(games)
-    .where(
-      and(
-        eq(games.sessionId, sessionId),
-        inArray(games.status, ["queued", "playing"]),
-      ),
-    )
-    .orderBy(asc(games.seq));
-  // Fake completions a second apart in seq order, ending at "now" - never
-  // in the future, so a game finished right after a simulate still sorts
-  // above them in Completed.
-  const base = Date.now();
-  for (const [i, g] of open.entries()) {
-    const target = g.round !== null ? 15 : 11;
-    const t1Wins = Math.random() < 0.5;
-    const loser = Math.floor(Math.random() * target);
-    const completedAt = new Date(base - (open.length - 1 - i) * 1000);
-    const startedAt =
-      g.startedAt ??
-      new Date(completedAt.getTime() - (8 + Math.floor(Math.random() * 8)) * 60000);
-    await db
-      .update(games)
-      .set({
-        status: "completed",
-        score1: t1Wins ? target : loser,
-        score2: t1Wins ? loser : target,
-        startedAt,
-        completedAt,
-      })
-      .where(eq(games.id, g.id));
-  }
-  await runTournamentRound(sessionId);
-  await runLadderMatchmaking(sessionId);
-  revalidate(sessionId);
-}
-
 export async function deleteGame(formData: FormData) {
   await requireAuth();
   const sessionId = Number(formData.get("sessionId"));

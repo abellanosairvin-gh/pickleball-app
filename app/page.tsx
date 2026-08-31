@@ -66,18 +66,6 @@ export default async function DashboardPage() {
             />
           </label>
           <ModePicker />
-          <label className="col-span-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">
-            Banner image{" "}
-            <span className="font-normal normal-case tracking-normal text-faint">
-              (optional - a file in /public, e.g. /irene-birthday.jpg, or a URL;
-              shown at the top of the spectator page)
-            </span>
-            <input
-              name="bannerImage"
-              placeholder="/irene-birthday.jpg"
-              className="mt-1 w-full rounded-md border border-line bg-card p-2 text-base font-normal normal-case tracking-normal text-ink"
-            />
-          </label>
           <button
             type="submit"
             className="col-span-2 rounded-md bg-ink p-3 font-semibold text-card hover:bg-ink-deep"
